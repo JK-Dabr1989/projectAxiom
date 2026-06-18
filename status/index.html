@@ -1,0 +1,275 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <base href="/projectAxiom/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Status | Project Axiom</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <div class="noise-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Project Axiom home">
+        <img class="brand-logo" src="assets/logo/logo transparent with text cropped.png" alt="Project Axiom" />
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="primary-navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <nav id="primary-navigation" class="site-nav" aria-label="Primary navigation">
+        <a href="#product">Product</a>
+        <a href="#status">Current Status</a>
+        <a href="status/">Project Status</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#saga">Saga</a>
+        <a href="#testers">Testers</a>
+      </nav>
+      <a class="nav-action" href="#testers">Help shape it</a>
+    </header>
+
+    <main class="status-dashboard-main">
+      <section class="archive-hero status-dashboard-hero">
+        <p class="eyebrow">Public development dashboard</p>
+        <h1>Project Status</h1>
+        <p>A transparent snapshot of where Axiom stands today.</p>
+        <p>This page documents current progress, active development work, testing activity, validation evidence, and upcoming milestones for AxiomScale.</p>
+      </section>
+
+      <section class="section status-dashboard-section">
+        <div class="section-heading">
+          <p class="eyebrow">Current stage</p>
+          <h2>Validation phase.</h2>
+          <p>AxiomScale is a working prototype system being tested in real households while hardware, app workflows, and setup friction are still being refined.</p>
+        </div>
+        <div class="status-grid status-grid-wide">
+          <article class="status-card">
+            <span class="status-dot"></span>
+            <div>
+              <h3>Current stage</h3>
+              <p>Real-world validation with active prototype and companion-app testing.</p>
+            </div>
+          </article>
+          <article class="status-card">
+            <span class="status-dot"></span>
+            <div>
+              <h3>Key focus areas</h3>
+              <p>Reliability, setup friction, NFC workflows, Bluetooth sync, and whether the product remains useful during ordinary cooking.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section status-dashboard-section">
+        <div class="section-heading">
+          <p class="eyebrow">Project snapshot</p>
+          <h2>Progress should be measurable, not just described.</h2>
+          <p>These indicators are intentionally practical. They show whether the project is accumulating real build and test evidence.</p>
+        </div>
+        <div class="metric-grid">
+          <article class="metric-card">
+            <strong>2</strong>
+            <span>working prototypes assembled and out in households</span>
+          </article>
+          <article class="metric-card">
+            <strong>V2</strong>
+            <span>Slimmer second-generation prototype currently being assembled</span>
+          </article>
+          <article class="metric-card">
+            <strong>3</strong>
+            <span>independent users currently testing</span>
+          </article>
+          <article class="metric-card">
+            <strong data-project-days>103</strong>
+            <span>days since first parts arrived on 5 January 2026</span>
+          </article>
+          <article class="metric-card">
+            <strong>V1</strong>
+            <span>tester baseline assembled for household validation</span>
+          </article>
+          <article class="metric-card">
+            <strong>Now</strong>
+            <span>real-world validation, feedback capture, and V2 assembly</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="section status-dashboard-section split-section">
+        <div class="section-heading">
+          <p class="eyebrow">Hardware status</p>
+          <h2>Functional prototypes are in use, but the hardware is still evolving.</h2>
+          <p>The priority is not polish for its own sake. The goal is a reliable kitchen object that can survive repeated use and communicate clearly.</p>
+        </div>
+        <div class="status-detail-grid">
+          <article class="info-card">
+            <h3>Prototype version</h3>
+            <p>V1 tester baseline is assembled and being used for household validation. V2 is being assembled as a slimmer second-generation unit.</p>
+          </article>
+          <article class="info-card">
+            <h3>Known issues</h3>
+            <p>Setup friction, surface fit, repeated-use reliability, enclosure refinement, and manufacturing practicality remain active questions.</p>
+          </article>
+          <article class="info-card">
+            <h3>Current hardware focus</h3>
+            <p>Improve durability, reduce physical bulk, tighten the NFC interaction area, and keep the device understandable during cooking.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section status-dashboard-section split-section">
+        <div class="section-heading">
+          <p class="eyebrow">Software status</p>
+          <h2>The Android app is functional enough for testing.</h2>
+          <p>The app is treated as review and recovery infrastructure rather than something that must interrupt the cooking moment.</p>
+        </div>
+        <div class="status-detail-grid">
+          <article class="info-card">
+            <h3>Android application</h3>
+            <p>Tester-baseline app is working with local persistence, food search, NFC writing, and Bluetooth sync.</p>
+          </article>
+          <article class="info-card">
+            <h3>Logging workflow</h3>
+            <p>The system is being tested around natural weighing, repeated foods, token assignment, and later review rather than live phone interaction.</p>
+          </article>
+          <article class="info-card">
+            <h3>Current software focus</h3>
+            <p>Improve sync reliability, reduce setup confusion, refine correction flows, and capture logs in a way testers can understand later.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section status-dashboard-section">
+        <div class="section-heading">
+          <p class="eyebrow">Testing programme</p>
+          <h2>Testing is focused on product truth, not testimonials.</h2>
+          <p>The useful feedback is the feedback that changes the product: what confused people, what survived repeat use, and what failed in ordinary kitchens.</p>
+        </div>
+        <div class="project-grid">
+          <article class="info-card">
+            <h3>Tester count</h3>
+            <p>3 independent users currently testing or preparing to test the system in real household conditions.</p>
+          </article>
+          <article class="info-card">
+            <h3>Current testing focus</h3>
+            <p>Reliability, setup friction, repeated use, NFC token behaviour, and whether the workflow feels worth keeping.</p>
+          </article>
+          <article class="info-card">
+            <h3>Open questions</h3>
+            <p>How much guidance is needed, which token patterns survive real kitchens, and which mistakes are easy to recover from later.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section status-dashboard-section">
+        <div class="section-heading">
+          <p class="eyebrow">Recent learnings</p>
+          <h2>The project has changed because testing changed it.</h2>
+          <p>These are validated product lessons rather than a list of completed features.</p>
+        </div>
+        <div class="project-grid">
+          <article class="info-card">
+            <h3>Passive logging matters</h3>
+            <p>Fixed-location or container-attached tags can make repeated behaviours feel natural rather than like another task.</p>
+          </article>
+          <article class="info-card">
+            <h3>More tokens can create more friction</h3>
+            <p>Adding identifiers solves one problem but can create another if tokens need too much management, storage, or remembering.</p>
+          </article>
+          <article class="info-card">
+            <h3>Setup friction is product friction</h3>
+            <p>Pairing, NFC writing, first log setup, and sync instructions are part of the product experience, not admin around it.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section status-dashboard-section">
+        <div class="section-heading">
+          <p class="eyebrow">Next milestones</p>
+          <h2>What happens next.</h2>
+          <p>The next stage is about broadening validation while tightening the parts of the system that testers actually touch.</p>
+        </div>
+        <div class="timeline-list roadmap-list">
+          <article class="timeline-item">
+            <span>01</span>
+            <div>
+              <h3>Expand household testing</h3>
+              <p>Bring more imperfect kitchens and more ordinary cooking routines into the feedback loop.</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <span>02</span>
+            <div>
+              <h3>Refine app recovery flows</h3>
+              <p>Make imperfect logs easier to understand, correct, and trust after the cooking moment.</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <span>03</span>
+            <div>
+              <h3>Complete V2 hardware assembly</h3>
+              <p>Use the slimmer prototype to test whether the product form is moving in the right direction.</p>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <span>04</span>
+            <div>
+              <h3>Define validation goals</h3>
+              <p>Turn tester observations into clearer evidence for reliability, repeat use, and product value.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section status-dashboard-section">
+        <div class="section-heading">
+          <p class="eyebrow">Deeper information</p>
+          <h2>Follow the evidence trail.</h2>
+          <p>The dashboard is a snapshot. These pages hold the build history, visual evolution, and tester pathways behind it.</p>
+        </div>
+        <div class="status-link-grid">
+          <a class="info-card" href="saga/">
+            <h3>Build Journal</h3>
+            <p>Read the Axiom Saga episodes.</p>
+          </a>
+          <a class="info-card" href="visual-evolution/hardware/">
+            <h3>Hardware Evolution</h3>
+            <p>Follow the path from label printer to AxiomScale.</p>
+          </a>
+          <a class="info-card" href="visual-evolution/tokens/">
+            <h3>Token Evolution</h3>
+            <p>See how NFC tags became an interaction language.</p>
+          </a>
+          <a class="info-card" href="visual-evolution/icons/">
+            <h3>Icon Evolution</h3>
+            <p>Review the visual language work behind the tokens.</p>
+          </a>
+          <a class="info-card" href="#testers">
+            <h3>Tester Registration</h3>
+            <p>Help shape the product while it is still malleable.</p>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>Project Axiom</span>
+      <span>Building AxiomScale in public.</span>
+    </footer>
+    <script>
+      (() => {
+        const projectStart = new Date(2026, 0, 5);
+        const today = new Date();
+        const startDay = new Date(projectStart.getFullYear(), projectStart.getMonth(), projectStart.getDate());
+        const currentDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const elapsedDays = Math.max(0, Math.floor((currentDay - startDay) / 86400000));
+        document.querySelectorAll("[data-project-days]").forEach((node) => {
+          node.textContent = String(elapsedDays);
+        });
+      })();
+    </script>
+  </body>
+</html>
+
+

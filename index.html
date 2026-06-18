@@ -1,0 +1,532 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <base href="/projectAxiom/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Axiom</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <div class="noise-layer"></div>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Project Axiom home">
+        <img class="brand-logo" src="assets/logo/logo transparent with text cropped.png" alt="Project Axiom" />
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="primary-navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <nav id="primary-navigation" class="site-nav" aria-label="Primary navigation">
+        <a href="#product">Product</a>
+        <a href="#status">Status</a>
+        <a href="#timeline">Timeline</a>
+        <a href="status/">Project Status</a>
+        <a href="#stories">Stories</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#saga">Saga</a>
+        <a href="#testers">Testers</a>
+      </nav>
+      <a class="nav-action" href="#testers">Help shape it</a>
+    </header>
+
+    <main id="top">
+<section class="hero-section">
+        <div class="hero-copy">
+          <p class="eyebrow">Building AxiomScale in public</p>
+          <h1>Project Axiom is an active product-development journey.</h1>
+          <p>
+            We are building AxiomScale in the open: an ongoing attempt to make food logging less frustrating
+            through NFC tags, smart weighing, and thoughtful companion software. The product is working, but it
+            is still being tested, challenged, and shaped by real kitchen use.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-button" href="#saga">Read the build journal</a>
+            <a class="secondary-button" href="#status">See current status</a>
+          </div>
+        </div>
+      </section>
+
+<section id="product" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">What is being built</p>
+          <h2>Food logging shouldn't require a phone every time you cook.</h2>
+          <p>The working hypothesis is simple: if you already know what you're holding and you're already weighing it, logging should happen naturally in the kitchen. The app should be there when you want insight, not when you're preparing food.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="info-card">
+            <span class="card-kicker">1</span>
+            <h3>Identify once</h3>
+            <p>Tell Axiom what the ingredient is.</p>
+            <p>Most people eat the same foods repeatedly. Assign an ingredient or recipe to a reusable Axiom token once, then simply place the token on the scale when preparing it again.</p>
+          </article>
+          <article class="info-card">
+            <span class="card-kicker">2</span>
+            <h3>Weigh naturally</h3>
+            <p>Cook as normal. The scale captures the weight.</p>
+            <p>The valuable effort is already happening when food is placed on the scale. Axiom aims to capture that information without introducing phone interaction into the cooking process.</p>
+          </article>
+          <article class="info-card">
+            <span class="card-kicker">3</span>
+            <h3>Review when convenient</h3>
+            <p>Use the app when you want insight, not while preparing food.</p>
+            <p>Calories, macros, trends, meal history, and corrections can be reviewed later. The goal is to keep the phone out of the kitchen until it is actually useful.</p>
+          </article>
+        </div>
+      </section>
+
+<section id="status" class="section status-overview">
+        <div class="section-heading">
+          <p class="eyebrow">Current status</p>
+          <h2>Working prototype, active validation.</h2>
+          <p>Project Axiom is past the pure concept stage, but not presented as a finished commercial product.</p>
+        </div>
+        <div class="status-grid status-grid-wide">
+          <article class="status-card">
+            <span class="status-dot"></span>
+            <div>
+              <h3>Hardware prototype</h3>
+              <p>2 working prototypes assembled and out in households for testing.</p>
+            </div>
+          </article>
+          <article class="status-card">
+            <span class="status-dot"></span>
+            <div>
+              <h3>Android app</h3>
+              <p>Working. NFC writing, local persistence, food search, and Bluetooth sync are in tester-baseline form.</p>
+            </div>
+          </article>
+          <article class="status-card">
+            <span class="status-dot muted"></span>
+            <div>
+              <h3>V2 hardware</h3>
+              <p>Slimmer second-generation prototype currently being assembled.</p>
+            </div>
+          </article>
+          <article class="status-card">
+            <span class="status-dot"></span>
+            <div>
+              <h3>Testing programme</h3>
+              <p>3 independent users currently testing, with real-world validation as the current stage.</p>
+            </div>
+          </article>
+        </div>
+        <div class="status-cta">
+          <a class="primary-button" href="status/">View Full Project Status</a>
+        </div>
+      </section>
+
+<section id="timeline" class="section split-section">
+        <div class="section-heading">
+          <p class="eyebrow">Project timeline</p>
+          <h2>Every product decision leaves a trail.</h2>
+          <p>This timeline highlights the key moments where the project changed direction, revealing how AxiomScale evolved from a kitchen labelling idea into a new approach to food logging.</p>
+        </div>
+        <div class="timeline-panel">
+          <div class="timeline-history" tabindex="0" aria-label="Completed project timeline milestones">
+            <div class="timeline-list">
+              <article class="timeline-item">
+                <span>01</span>
+                <div>
+                  <h3>Idea</h3>
+                  <p>December 2025. A long-standing frustration with kitchen labelling finally became a project worth pursuing.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>02</span>
+                <div>
+                  <h3>Parts Ordered</h3>
+                  <p>January 2026. The first components were purchased and the project officially began.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>03</span>
+                <div>
+                  <h3>First Assembly</h3>
+                  <p>February 2026. Individual parts started coming together into a working system.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>04</span>
+                <div>
+                  <h3>Hello World</h3>
+                  <p>February 2026. The first successful communication proved the core electronics could work together.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>05</span>
+                <div>
+                  <h3>First Label Printed</h3>
+                  <p>March 2026. The system produced its first usable kitchen label.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>06</span>
+                <div>
+                  <h3>The Enclosure Problem</h3>
+                  <p>March 2026. A working prototype now needed a practical physical form.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>07</span>
+                <div>
+                  <h3>3D Printing Begins</h3>
+                  <p>March 2026. The search for a suitable enclosure moved from ideas into physical prototypes.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>08</span>
+                <div>
+                  <h3>Fighting Physics</h3>
+                  <p>March 2026. Multiple enclosure designs failed, revealing the realities of manufacturing and materials.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>09</span>
+                <div>
+                  <h3>First Test Prototype</h3>
+                  <p>March 2026. The first complete label-printing device was assembled and ready for testing.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>10</span>
+                <div>
+                  <h3>The Tester Problem</h3>
+                  <p>March 2026. Finding people willing to test the system proved harder than building it.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>11</span>
+                <div>
+                  <h3>Weight Loss Journey</h3>
+                  <p>A personal health journey unexpectedly brought the problem space much closer to home.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>12</span>
+                <div>
+                  <h3>Becoming the User</h3>
+                  <p>Daily calorie tracking transformed the problem from theory into lived experience.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>13</span>
+                <div>
+                  <h3>New Ideas Emerge</h3>
+                  <p>March 2026. While refining the printer, new concepts around NFC and food tracking began to appear.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>14</span>
+                <div>
+                  <h3>First AxiomScale Concepts</h3>
+                  <p>March 2026. Early ideas emerged for combining food identification and logging into a single workflow.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>15</span>
+                <div>
+                  <h3>Commercial Reality</h3>
+                  <p>March 2026. Manufacturing, certification and support considerations forced a reassessment of the project's direction.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>16</span>
+                <div>
+                  <h3>Choosing a Path</h3>
+                  <p>March 2026. The decision was made to focus on a single product rather than multiple parallel ideas.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>17</span>
+                <div>
+                  <h3>Food Logging Friction Rediscovered</h3>
+                  <p>April 2026. The biggest obstacle proved not to be food identification, but the effort required to log it.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>18</span>
+                <div>
+                  <h3>Problem Redefined</h3>
+                  <p>March 2026. The project's focus shifted from organisation and labelling towards reducing logging friction itself.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>19</span>
+                <div>
+                  <h3>NFC Takes Centre Stage</h3>
+                  <p>March 2026. NFC emerged as the most natural way to identify food without disrupting kitchen workflows.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>20</span>
+                <div>
+                  <h3>The First AxiomScale Concepts</h3>
+                  <p>March 2026. The first ideas appeared for combining weighing and identification into a single action.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>21</span>
+                <div>
+                  <h3>The First AxiomScale Prototype</h3>
+                  <p>April 2026. The first scale capable of weighing and identifying food became a reality.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>22</span>
+                <div>
+                  <h3>Building the Ecosystem</h3>
+                  <p>April 2026. Development expanded beyond hardware into firmware, tags and companion applications.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>23</span>
+                <div>
+                  <h3>The First App Connection</h3>
+                  <p>April 2026. Data successfully moved between the scale and companion application for the first time.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>24</span>
+                <div>
+                  <h3>Identity Becomes Essential</h3>
+                  <p>April 2026. The system evolved from tracking food to tracking who was consuming it.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>25</span>
+                <div>
+                  <h3>Recipe Workflows Emerge</h3>
+                  <p>April 2026. Attention shifted from individual ingredients to complete meal preparation workflows.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>26</span>
+                <div>
+                  <h3>More Tokens, More Problems</h3>
+                  <p>April 2026. Solving identification by adding tokens revealed a new source of friction.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>27</span>
+                <div>
+                  <h3>Passive Logging Discovered</h3>
+                  <p>April 2026. Fixed-location tags demonstrated a simpler way to capture repetitive actions.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>28</span>
+                <div>
+                  <h3>The Coffee Jar Insight</h3>
+                  <p>April 2026. A simple sticker on a coffee jar validated the value of near-effortless logging.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>29</span>
+                <div>
+                  <h3>From Prototype to Product</h3>
+                  <p>May 2026. Focus expanded from proving the concept to creating something others could use.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>30</span>
+                <div>
+                  <h3>The First External Tester</h3>
+                  <p>June 2026. The device left the development environment and entered real-world use.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>31</span>
+                <div>
+                  <h3>Household Validation Begins</h3>
+                  <p>June 2026. Testing moved into genuine household routines and daily habits.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>32</span>
+                <div>
+                  <h3>Public Development Begins</h3>
+                  <p>June 2026. The project's journey started being documented publicly through the website and saga.</p>
+                </div>
+              </article>
+              <article class="timeline-item current">
+                <span>Now</span>
+                <div>
+                  <h3>The Current Testing Phase</h3>
+                  <p>June 2026. Multiple testers are now evaluating the system while development continues.</p>
+                </div>
+              </article>
+              <article class="timeline-item">
+                <span>Next</span>
+                <div>
+                  <h3>Looking Beyond the Prototype</h3>
+                  <p>June 2026. Attention is beginning to shift from validation toward what a future product could become.</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+<section id="stories" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Tester stories</p>
+          <h2>Real-world observations, not testimonials.</h2>
+          <p>The useful stories are the ones that change the product: what confused people, what survived repeat use, and what failed in ordinary kitchens.</p>
+        </div>
+        <div class="project-grid">
+          <article class="info-card">
+            <h3>More Is More</h3>
+            <p>From the beginning, my philosophy was simple: more tokens meant less friction. If every ingredient had its own NFC token, identifying food would become effortless and logging would naturally become easier.</p>
+            <a class="secondary-button saga-read-more" href="tester-insights/jack-the-founder/#more-is-more">Read More</a>
+          </article>
+          <article class="info-card">
+            <h3>The Recipe Tag Surprise</h3>
+            <p>I assumed that needing to identify every ingredient individually would become frustrating, so I explored recipe tags, guided cooking workflows, and various ways of reducing the number of interactions required.</p>
+            <a class="secondary-button saga-read-more" href="tester-insights/jack-the-founder/#recipe-tag-surprise">Read More</a>
+          </article>
+          <article class="info-card">
+            <h3>Pretty Isn't Useful</h3>
+            <p>I spent a surprising amount of time refining the visual language of the tokens. Food icons went through countless revisions as I searched for something that felt polished, modern, and attractive enough to live permanently on a kitchen worktop.</p>
+            <a class="secondary-button saga-read-more" href="tester-insights/jack-the-founder/#pretty-isnt-useful">Read More</a>
+          </article>
+        </div>
+      </section>
+
+<section id="gallery" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Axiom Visual Evolution</p>
+          <h2>The journey matters as much as the destination.</h2>
+          <p>Axiom wasn't designed in a single breakthrough moment. It emerged through prototypes, failed assumptions, real-world testing, and continuous refinement.</p>
+        </div>
+        <div class="gallery-grid">
+          <article class="gallery-card">
+            <a class="gallery-frame gallery-frame-image" href="visual-evolution/hardware/" aria-label="Open Hardware Evolution gallery">
+              <img loading="lazy" src="assets/evolution/galleries/Scale/SC-23.jpg" alt="Advanced AxiomScale prototype with dedicated controls, display and NFC interaction area." />
+            </a>
+            <h3>Hardware Evolution</h3>
+            <p>The complete journey from the label printer origins through the development of AxiomScale.</p>
+            <a class="secondary-button saga-read-more" href="visual-evolution/hardware/">Open gallery</a>
+          </article>
+          <article class="gallery-card">
+            <a class="gallery-frame gallery-frame-image" href="visual-evolution/tokens/" aria-label="Open Token Evolution gallery">
+              <img loading="lazy" src="assets/evolution/galleries/tokens/TK-14.jpg" alt="Advanced token set showing the evolution toward a consistent NFC interaction language." />
+            </a>
+            <h3>Token Evolution</h3>
+            <p>How NFC tags evolved into a physical interaction language designed around habits and reduced friction.</p>
+            <a class="secondary-button saga-read-more" href="visual-evolution/tokens/">Open gallery</a>
+          </article>
+          <article class="gallery-card">
+            <a class="gallery-frame gallery-frame-image" href="visual-evolution/icons/" aria-label="Open Icon Evolution gallery">
+              <img loading="lazy" src="assets/evolution/galleries/Icons/IC-16.png" alt="Advanced livestock and meat icon system designed for direct food identification." />
+            </a>
+            <h3>Icon Evolution</h3>
+            <p>The development of a visual language for identifying ingredients, categories and actions at a glance.</p>
+            <a class="secondary-button saga-read-more" href="visual-evolution/icons/">Open gallery</a>
+          </article>
+        </div>
+      </section>
+
+<section id="saga" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Axiom Saga</p>
+          <h2>From bench prototype to tested product.</h2>
+          <p>A running journal of the AxiomScale build: hardware changes, software decisions, tester feedback, mistakes, fixes, and lessons learned.</p>
+        </div>
+        <div class="saga-carousel-controls" aria-label="Saga homepage navigation">
+          <a class="secondary-button" href="saga/">View all entries</a>
+        </div>
+        <div class="saga-grid" data-saga-home>
+          <article class="info-card saga-card">
+            <img class="saga-card-image" src="saga/assets/aphabot-soup/image-01.jpeg" alt="port and wirind diagrams label for electronic device" />
+            <span class="meta-line">9 June 2026</span>
+            <h3>The Alphabet Soup</h3>
+            <p>The breadboard had taught me an important lesson:</p>
+            <a class="secondary-button saga-read-more" href="saga/#aphabot-soup">Read More</a>
+          </article>
+          <article class="info-card saga-card">
+            <img class="saga-card-image" src="saga/assets/signs-of-life/image-01.jpeg" alt="electronics component lcd screen" />
+            <span class="meta-line">11 June 2026</span>
+            <h3>Signs Of Life</h3>
+            <p>Having finally defeated the Spaghetti Monster and convinced myself that the wires were connected correctly, it was time for the next logical step.</p>
+            <a class="secondary-button saga-read-more" href="saga/#signs-of-life">Read More</a>
+          </article>
+          <article class="info-card saga-card">
+            <img class="saga-card-image" src="saga/assets/now-we-are-cooking/image-01.jpeg" alt="electronic device prototype with lcd screen and 4x4 keypad" />
+            <span class="meta-line">16 June 2026</span>
+            <h3>Now We&#39;re Cooking</h3>
+            <p>Following the successful display of dlroW olleH, progress accelerated rapidly.</p>
+            <a class="secondary-button saga-read-more" href="saga/#now-we-are-cooking">Read More</a>
+          </article>
+        </div>
+      </section>
+
+<section id="testers" class="section signup-section">
+        <div class="section-heading">
+          <p class="eyebrow">Testing programme</p>
+          <h2>Help shape the product while it is still malleable.</h2>
+          <p>Testers are not signing up for a finished beta. They are helping decide what AxiomScale becomes: which workflows survive, which assumptions break, and which problems are worth solving next.</p>
+        </div>
+        <form class="signup-form" action="#testers" method="get">
+          <label>
+            <span>Name</span>
+            <input name="name" type="text" autocomplete="name" />
+          </label>
+          <label>
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" />
+          </label>
+          <label>
+            <span>What kind of testing could you help with?</span>
+            <textarea name="testing-context" rows="4"></textarea>
+          </label>
+          <button class="primary-button" type="submit">Help shape AxiomScale</button>
+        </form>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>Project Axiom</span>
+      <span>Building AxiomScale in public.</span>
+    </footer>
+    <script src="saga/saga-data.js"></script>
+    <script src="saga/saga-home.js"></script>
+
+    <script>
+      (() => {
+        const projectStart = new Date(2026, 0, 5);
+        const today = new Date();
+        const startDay = new Date(projectStart.getFullYear(), projectStart.getMonth(), projectStart.getDate());
+        const currentDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const elapsedDays = Math.max(0, Math.floor((currentDay - startDay) / 86400000));
+
+        document.querySelectorAll("[data-project-days]").forEach((node) => {
+          node.textContent = String(elapsedDays);
+        });
+
+        const timelineHistory = document.querySelector(".timeline-history");
+        if (timelineHistory) {
+          const scrollTimelineToLatest = () => {
+            timelineHistory.scrollTop = timelineHistory.scrollHeight;
+          };
+
+          scrollTimelineToLatest();
+          window.addEventListener("load", scrollTimelineToLatest, { once: true });
+        }
+      })();
+    </script>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
