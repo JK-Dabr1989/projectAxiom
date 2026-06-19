@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   const entries = (window.AXIOM_SAGA_ENTRIES || []).slice().sort((a, b) => a.order - b.order);
   const navMount = document.querySelector("[data-saga-nav]");
   const contentMount = document.querySelector("[data-saga-content]");
@@ -19,7 +19,7 @@
     navMount.innerHTML = entries.map((entry) => {
       const isActive = entry.slug === selected.slug;
       return `
-        <a class="${isActive ? "active" : ""}" href="saga/#${escapeHtml(entry.slug)}">
+        <a class="${isActive ? "active" : ""}" href="/saga/#${escapeHtml(entry.slug)}">
           <span>${escapeHtml(entry.title)}</span>
           <small>Episode ${escapeHtml(entry.order)} / ${escapeHtml(entry.postedDate || entry.date)}</small>
         </a>
@@ -57,4 +57,3 @@
   window.addEventListener("hashchange", renderEpisode);
   renderEpisode();
 })();
-

@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   const testers = window.AXIOM_TESTER_INSIGHTS || [];
   const navMount = document.querySelector("[data-tester-nav]");
   const contentMount = document.querySelector("[data-tester-content]");
@@ -23,7 +23,7 @@
   const selectedTester = testers.find((tester) => tester.testerId === selectedId) || testers[0];
 
   navMount.innerHTML = testers.map((tester) => {
-    const href = `tester-insights/${escapeHtml(tester.testerId)}/`;
+    const href = `/tester-insights/${escapeHtml(tester.testerId)}/`;
     const isActive = tester.testerId === selectedTester.testerId;
     const meta = [tester.label, tester.location].filter(Boolean).join(" / ");
     return `
@@ -91,4 +91,3 @@
   });
   window.addEventListener("hashchange", scrollToHash);
 })();
-

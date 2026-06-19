@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   const header = document.querySelector(".site-header");
   const nav = document.querySelector(".site-nav");
   const toggle = document.querySelector(".nav-toggle");
@@ -23,4 +23,3 @@
     if (event.key === "Escape") closeMenu();
   });
 })();
-
