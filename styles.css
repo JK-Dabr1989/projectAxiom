@@ -1302,6 +1302,17 @@ body.lightbox-open {
   gap: var(--space-16);
   padding: var(--space-20);
 }
+.tally-embed-card {
+  overflow: hidden;
+}
+
+.tally-embed-card iframe {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+}
 
 .signup-form label {
   display: grid;
