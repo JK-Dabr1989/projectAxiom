@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   const galleries = window.AXIOM_VISUAL_EVOLUTION || {};
   const mount = document.querySelector("[data-evolution-gallery]");
   if (!mount) return;
@@ -100,9 +100,9 @@
           <h1 id="startup-timeline-title">${escapeHtml(gallery.title)}</h1>
           <p>${escapeHtml(gallery.tagline)}</p>
           <div class="evolution-gallery-nav" aria-label="Visual evolution gallery navigation">
-            <a class="${galleryId === "hardware" ? "active" : ""}" href="visual-evolution/hardware/">Hardware Evolution</a>
-            <a class="${galleryId === "tokens" ? "active" : ""}" href="visual-evolution/tokens/">Token Evolution</a>
-            <a class="${galleryId === "icons" ? "active" : ""}" href="visual-evolution/icons/">Icon Evolution</a>
+            <a class="${galleryId === "hardware" ? "active" : ""}" href="/visual-evolution/hardware/">Hardware Evolution</a>
+            <a class="${galleryId === "tokens" ? "active" : ""}" href="/visual-evolution/tokens/">Token Evolution</a>
+            <a class="${galleryId === "icons" ? "active" : ""}" href="/visual-evolution/icons/">Icon Evolution</a>
           </div>
         </div>
         <div class="startup-timeline-summary">
@@ -141,9 +141,9 @@
           </ol>
         </div>
         <div class="startup-timeline-actions">
-          ${galleryId !== "hardware" ? `<a class="secondary-button" href="visual-evolution/hardware/">View hardware evolution</a>` : ""}
-          ${galleryId !== "tokens" ? `<a class="secondary-button" href="visual-evolution/tokens/">View token evolution</a>` : ""}
-          ${galleryId !== "icons" ? `<a class="secondary-button" href="visual-evolution/icons/">View icon evolution</a>` : ""}
+          ${galleryId !== "hardware" ? `<a class="secondary-button" href="/visual-evolution/hardware/">View hardware evolution</a>` : ""}
+          ${galleryId !== "tokens" ? `<a class="secondary-button" href="/visual-evolution/tokens/">View token evolution</a>` : ""}
+          ${galleryId !== "icons" ? `<a class="secondary-button" href="/visual-evolution/icons/">View icon evolution</a>` : ""}
         </div>
       </section>
     `;
@@ -156,9 +156,9 @@
       <h1>${escapeHtml(gallery.title)}</h1>
       <p>${escapeHtml(gallery.tagline)}</p>
       <div class="evolution-gallery-nav" aria-label="Visual evolution gallery navigation">
-        <a class="${galleryId === "hardware" ? "active" : ""}" href="visual-evolution/hardware/">Hardware Evolution</a>
-        <a class="${galleryId === "tokens" ? "active" : ""}" href="visual-evolution/tokens/">Token Evolution</a>
-        <a class="${galleryId === "icons" ? "active" : ""}" href="visual-evolution/icons/">Icon Evolution</a>
+        <a class="${galleryId === "hardware" ? "active" : ""}" href="/visual-evolution/hardware/">Hardware Evolution</a>
+        <a class="${galleryId === "tokens" ? "active" : ""}" href="/visual-evolution/tokens/">Token Evolution</a>
+        <a class="${galleryId === "icons" ? "active" : ""}" href="/visual-evolution/icons/">Icon Evolution</a>
       </div>
     </section>
     <section class="evolution-intro">
@@ -228,4 +228,3 @@
     if (event.key === "ArrowRight") showImage(activeIndex + 1);
   });
 })();
-

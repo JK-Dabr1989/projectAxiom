@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   const entries = window.AXIOM_SAGA_ENTRIES || [];
   const mount = document.querySelector("[data-saga-home]");
   const older = document.querySelector("[data-saga-older]");
@@ -33,4 +33,3 @@
 
   render();
 })();
-

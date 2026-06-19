@@ -1,4 +1,4 @@
-﻿window.AXIOM_TESTER_INSIGHTS = [
+window.AXIOM_TESTER_INSIGHTS = [
   {
     testerId: "jack-the-founder",
     name: "Jack",
@@ -59,4 +59,3 @@
     insights: []
   }
 ];
-
