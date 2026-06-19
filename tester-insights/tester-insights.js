@@ -38,7 +38,7 @@
   const insightMarkup = selectedTester.insights.length
     ? selectedTester.insights.map((insight, index) => `
         <section id="${escapeHtml(insight.id)}" class="saga-post tester-insight-entry">
-          <p class="saga-meta">Insight ${index + 1}${insight.date ? ` &middot; ${escapeHtml(insight.date)}` : ""}</p>
+          <p class="saga-meta"><span>Insight</span> ${index + 1}${insight.date ? ` &middot; ${escapeHtml(insight.date)}` : ""}</p>
           <h2>${escapeHtml(insight.title)}</h2>
           ${insight.excerpt ? `<p class="tester-insight-excerpt">${escapeHtml(insight.excerpt)}</p>` : ""}
           ${insight.image ? `

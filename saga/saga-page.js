@@ -21,7 +21,7 @@
       return `
         <a class="${isActive ? "active" : ""}" href="/saga/#${escapeHtml(entry.slug)}">
           <span>${escapeHtml(entry.title)}</span>
-          <small>Episode ${escapeHtml(entry.order)} / ${escapeHtml(entry.postedDate || entry.date)}</small>
+          <small><span>Episode</span> ${escapeHtml(entry.order)} / ${escapeHtml(entry.postedDate || entry.date)}</small>
         </a>
       `;
     }).join("");
@@ -36,7 +36,7 @@
       <section class="archive-hero saga-episode-hero">
         <p class="eyebrow">Axiom Saga</p>
         <h1>${escapeHtml(selected.title)}</h1>
-        <p>Episode ${escapeHtml(selected.order)} / Posted ${escapeHtml(selected.postedDate || selected.date)}</p>
+        <p><span>Episode</span> ${escapeHtml(selected.order)} / <span>Posted</span> ${escapeHtml(selected.postedDate || selected.date)}</p>
       </section>
       <section id="${escapeHtml(selected.slug)}" class="saga-post saga-episode-entry">
         <p class="saga-meta">${escapeHtml(selected.excerpt)}</p>
