@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Project Status | Project Axiom</title>
     <link rel="stylesheet" href="/styles.css" />
-    <script src="/script.js?v=pl3" defer></script>
+    <script src="/script.js?v=dashboard-days-1" defer></script>
   </head>
   <body>
     <div class="noise-layer"></div>
@@ -81,7 +81,7 @@
             <span>independent users currently testing</span>
           </article>
           <article class="metric-card">
-            <strong data-project-days>103</strong>
+            <strong data-project-days data-project-start="2026-01-05">194</strong>
             <span>days since first parts arrived on 5 January 2026</span>
           </article>
           <article class="metric-card">
@@ -256,17 +256,5 @@
       <span>Project Axiom</span>
       <span>Building AxiomScale in public.</span>
     </footer>
-    <script>
-      (() => {
-        const projectStart = new Date(2026, 0, 5);
-        const today = new Date();
-        const startDay = new Date(projectStart.getFullYear(), projectStart.getMonth(), projectStart.getDate());
-        const currentDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const elapsedDays = Math.max(0, Math.floor((currentDay - startDay) / 86400000));
-        document.querySelectorAll("[data-project-days]").forEach((node) => {
-          node.textContent = String(elapsedDays);
-        });
-      })();
-    </script>
   </body>
 </html>

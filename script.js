@@ -537,6 +537,25 @@
     updateSwitcher(lang);
   };
 
+  const updateProjectDayCounters = () => {
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const parseUtcDate = (value) => {
+      const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return Number.NaN;
+      const [, year, month, day] = match;
+      return Date.UTC(Number(year), Number(month) - 1, Number(day));
+    };
+    const now = new Date();
+    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+
+    document.querySelectorAll("[data-project-days]").forEach((node) => {
+      const startUtc = parseUtcDate(node.dataset.projectStart || "2026-01-05");
+      if (Number.isNaN(startUtc)) return;
+      const elapsedDays = Math.max(0, Math.floor((todayUtc - startUtc) / millisecondsPerDay));
+      node.textContent = String(elapsedDays);
+    });
+  };
+
   const initNavigation = () => {
     const header = document.querySelector(".site-header");
     const nav = document.querySelector(".site-nav");
@@ -586,6 +605,7 @@
 
   ensureSwitcher();
   initNavigation();
+  updateProjectDayCounters();
   applyLanguage(document);
   observeChanges();
 })();
