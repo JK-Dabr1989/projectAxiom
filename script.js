@@ -403,7 +403,11 @@
       "Style Comparison": "Porównanie stylów",
       "Simplifying for Manufacture": "Uproszczenie pod produkcję",
       "Vegetable Detail Set": "Zestaw szczegółowych ikon warzyw",
-      "Advanced Ingredient Language": "Zaawansowany język składników"
+      "Advanced Ingredient Language": "Zaawansowany język składników",
+      "The Best Prototype Nobody Wanted": "Najlepszy prototyp, którego nikt nie chciał",
+      "18 July 2026": "18 lipca 2026",
+      "Eventually... I got there.": "W końcu... udało się.",
+      "Completed label printer prototype with LCD keypad and thermal printer": "ukończony prototyp drukarki etykiet z ekranem LCD, klawiaturą i drukarką termiczną"
     },
   };
 
