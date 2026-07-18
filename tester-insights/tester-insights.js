@@ -22,6 +22,46 @@
   const selectedId = slugFromPath();
   const selectedTester = testers.find((tester) => tester.testerId === selectedId) || testers[0];
 
+  const renderInsightBlock = (block) => {
+    if (!block || !block.type) return "";
+    if (block.type === "location") {
+      return `<p class="tester-insight-location">${escapeHtml(block.text)}</p>`;
+    }
+    if (block.type === "heading") {
+      return `<h3>${escapeHtml(block.text)}</h3>`;
+    }
+    if (block.type === "subheading") {
+      return `<h4>${escapeHtml(block.text)}</h4>`;
+    }
+    if (block.type === "quote") {
+      return `<blockquote class="tester-insight-quote"><p>${escapeHtml(block.text)}</p></blockquote>`;
+    }
+    if (block.type === "list") {
+      return `
+        <ul>
+          ${(block.items || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+        </ul>
+      `;
+    }
+    if (block.type === "download") {
+      return `
+        <section class="tester-evidence-download">
+          <h3>${escapeHtml(block.heading)}</h3>
+          <p>${escapeHtml(block.body)}</p>
+          <a class="secondary-button" href="${escapeHtml(block.href)}" aria-label="${escapeHtml(block.ariaLabel || block.text)}">${escapeHtml(block.text)}</a>
+        </section>
+      `;
+    }
+    return `<p>${escapeHtml(block.text)}</p>`;
+  };
+
+  const renderInsightBody = (insight) => {
+    if (insight.blocks && insight.blocks.length) {
+      return insight.blocks.map(renderInsightBlock).join("");
+    }
+    return (insight.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
+  };
+
   navMount.innerHTML = testers.map((tester) => {
     const href = `/tester-insights/${escapeHtml(tester.testerId)}/`;
     const isActive = tester.testerId === selectedTester.testerId;
@@ -38,7 +78,7 @@
   const insightMarkup = selectedTester.insights.length
     ? selectedTester.insights.map((insight, index) => `
         <section id="${escapeHtml(insight.id)}" class="saga-post tester-insight-entry">
-          <p class="saga-meta"><span>Insight</span> ${index + 1}${insight.date ? ` &middot; ${escapeHtml(insight.date)}` : ""}</p>
+          <p class="saga-meta">${insight.label ? escapeHtml(insight.label) : `<span>Insight</span> ${index + 1}`}${insight.date ? ` &middot; ${escapeHtml(insight.date)}` : ""}</p>
           <h2>${escapeHtml(insight.title)}</h2>
           ${insight.excerpt ? `<p class="tester-insight-excerpt">${escapeHtml(insight.excerpt)}</p>` : ""}
           ${insight.image ? `
@@ -48,7 +88,7 @@
             </figure>
           ` : ""}
           <div class="article-body">
-            ${(insight.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+            ${renderInsightBody(insight)}
           </div>
         </section>
       `).join("")

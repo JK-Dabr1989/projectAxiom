@@ -1544,6 +1544,49 @@ textarea:focus {
   line-height: 1.6;
 }
 
+.tester-insight-location {
+  margin-bottom: var(--space-20);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.tester-insight-entry .article-body h3 {
+  margin-top: 34px;
+  margin-bottom: var(--space-12);
+  font-size: clamp(1.45rem, 2.5vw, 2rem);
+}
+
+.tester-insight-entry .article-body h4 {
+  margin-top: var(--space-20);
+  margin-bottom: var(--space-10);
+  color: var(--color-text);
+  font-size: 1.12rem;
+}
+
+.tester-insight-quote {
+  max-width: 760px;
+  margin: var(--space-20) 0;
+  padding: var(--space-8) 0 var(--space-8) var(--space-20);
+  border-left: 3px solid rgba(166, 130, 86, 0.72);
+}
+
+.tester-insight-quote p {
+  color: var(--color-text);
+  font-size: 1.12rem;
+  line-height: 1.55;
+}
+
+.tester-evidence-download {
+  max-width: 760px;
+  margin-top: 42px;
+  padding-top: var(--space-24);
+  border-top: 1px solid var(--border-faint);
+}
+
+.tester-evidence-download .secondary-button {
+  margin-top: var(--space-12);
+}
+
 .article-nav {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

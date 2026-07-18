@@ -51,11 +51,145 @@ window.AXIOM_TESTER_INSIGHTS = [
     insights: []
   },
   {
-    testerId: "ivaylo-edinburgh",
-    name: "Ivaylo",
+    testerId: "tester-01",
+    name: "Tester 01",
     label: "Tester",
     location: "Edinburgh",
     heroImage: "",
-    insights: []
+    insights: [
+      {
+        id: "first-external-home-test",
+        label: "First External Tester",
+        title: "What we learned from our first external home test",
+        date: "",
+        excerpt: "Every opinion here comes from real people using pre-release hardware in their own kitchens. This wasn't a polished product demonstration. It was an opportunity to understand where the system creates value, where it creates friction, and what should change before the next iteration.",
+        blocks: [
+          {
+            type: "location",
+            text: "Edinburgh, Scotland"
+          },
+          {
+            type: "heading",
+            text: "What worked"
+          },
+          {
+            type: "subheading",
+            text: "NFC made food logging enjoyable"
+          },
+          {
+            type: "quote",
+            text: "The interactiveness that the NFC provide is engaging and it provides a 'game' factor to logging food making you want to use it more."
+          },
+          {
+            type: "paragraph",
+            text: "This was the strongest recurring theme throughout testing."
+          },
+          {
+            type: "paragraph",
+            text: "Rather than feeling like another nutrition app, the physical interaction encouraged repeated use. The tester specifically suggested pushing this idea even further in future versions."
+          },
+          {
+            type: "subheading",
+            text: "The concept has potential"
+          },
+          {
+            type: "paragraph",
+            text: "Although the tester chose not to continue with the current prototype, they expressed interest in testing future versions and said they would probably want the system back if it disappeared."
+          },
+          {
+            type: "paragraph",
+            text: "For an early hardware prototype, that's encouraging."
+          },
+          {
+            type: "heading",
+            text: "Where we fell short"
+          },
+          {
+            type: "paragraph",
+            text: "The current prototype did not replace existing food logging workflows."
+          },
+          {
+            type: "paragraph",
+            text: "The tester felt that traditional scales and existing nutrition applications remained faster and more intuitive."
+          },
+          {
+            type: "quote",
+            text: "Using a traditional scale is less time consuming overall, and pre-defined recipes on the app are more intuitive to use..."
+          },
+          {
+            type: "paragraph",
+            text: "This wasn't unexpected."
+          },
+          {
+            type: "paragraph",
+            text: "People already have years of experience using conventional kitchen scales. Replacing habits requires more than working hardware - it requires a workflow that is genuinely faster."
+          },
+          {
+            type: "heading",
+            text: "Technical issues discovered"
+          },
+          {
+            type: "paragraph",
+            text: "During this test we identified two significant prototype issues."
+          },
+          {
+            type: "list",
+            items: [
+              "NFC reliability occasionally prevented Recipe Tags and Passive Logging from functioning consistently.",
+              "Bluetooth synchronisation exposed stability problems that required further investigation."
+            ]
+          },
+          {
+            type: "paragraph",
+            text: "Both issues were addressed immediately after the testing period and became priorities for the following hardware and firmware revisions."
+          },
+          {
+            type: "heading",
+            text: "What changed because of this feedback"
+          },
+          {
+            type: "paragraph",
+            text: "This test directly influenced the roadmap."
+          },
+          {
+            type: "list",
+            items: [
+              "Increased NFC reliability.",
+              "Investigation into Bluetooth synchronisation stability.",
+              "Greater focus on making NFC interactions feel rewarding rather than simply functional.",
+              "Continued effort to reduce friction so the scale becomes faster than traditional logging methods."
+            ]
+          },
+          {
+            type: "heading",
+            text: "Overall takeaway"
+          },
+          {
+            type: "paragraph",
+            text: "The most valuable outcome wasn't discovering that the prototype needed improvement."
+          },
+          {
+            type: "paragraph",
+            text: "It was discovering why people kept reaching for it."
+          },
+          {
+            type: "paragraph",
+            text: "The tester repeatedly described the NFC interaction as engaging and enjoyable - something existing kitchen scales simply don't offer. At the same time, they reminded us that novelty alone isn't enough. To become part of someone's daily routine, the experience must also be faster and more intuitive than the tools they're already using."
+          },
+          {
+            type: "paragraph",
+            text: "That's exactly what the next iterations are focused on."
+          },
+          {
+            type: "download",
+            heading: "Read the original tester feedback",
+            body: "The complete survey response is available below. The tester's identity and document metadata have been removed, but the submitted answers have not been rewritten.",
+            href: "axiom-external-tester-report-001.pdf",
+            text: "Download anonymised tester report",
+            ariaLabel: "Download anonymised tester report for Tester 01"
+          }
+        ]
+      }
+    ]
   }
 ];
