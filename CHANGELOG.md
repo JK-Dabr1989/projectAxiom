@@ -1,0 +1,30 @@
+# Axiom Web App Changelog
+
+## 2026-08-31
+
+- Created the isolated Axiom Web App sub-project skeleton.
+- Added Web App-specific agent guidance defining scope, boundaries, product-validation purpose, local-first direction, NFC/BLE direction, and change-control expectations.
+- Began Stage 2 Android app-side parity work.
+- Added a Vite/React/TypeScript Web App implementation with local food search, macro preview, manual logging, timeline meal grouping, log edit/delete, recipe creation/library, settings, and scale sync boundary UI.
+- Copied the Android bundled `food_catalog.json` and `food_keywords.json` into the Web App public assets so the web project can run isolated while preserving catalog meaning.
+- Added IndexedDB local persistence through `idb`.
+- Added `ScaleTransport`, `UnavailableScaleTransport`, and explicit development-only `MockScaleTransport`.
+- Added `SMARTSCALE_V3` status/log parsing and event-ID idempotent import mapping.
+- Added parity matrix and unit tests for nutrition calculation, meal grouping, and protocol parsing/import.
+- Continued Stage 3 app-side parity work.
+- Added IndexedDB stores for custom ingredients, identities, and source mappings.
+- Added custom ingredient library/editor with per-100g nutrition fields and search integration.
+- Added passive quick-log configuration for food/ingredient shortcuts with default grams, identity association, edit, remove, backup persistence, and mock shortcut resolution.
+- Added review workflows for zero-weight entries and unknown/generic imported entries.
+- Added identity list/create/rename/switch/delete flows while preserving historical log identity association.
+- Added recipe manual portion logging.
+- Added versioned Web backup JSON export, restore validation with overwrite semantics, and logs CSV export.
+- Added tests for review resolution, source mappings, recipe logging, backup round-trip, and restore validation.
+- Continued Stage 4 validation-readiness work.
+- Added installable PWA foundation with manifest, app icons, service worker shell/data caching, and service-worker update notification.
+- Added local-first onboarding for fresh installs.
+- Added barcode ingredient onboarding with manual entry, optional browser camera scanning, Open Food Facts lookup, review-before-save, and graceful unsupported/offline failure states.
+- Expanded identity details with macro targets and review preferences.
+- Added Web-specific Help/Setup guidance.
+- Added confirmation prompts for local reset and destructive restore.
+- Updated README and parity documentation for PWA/offline validation status.
