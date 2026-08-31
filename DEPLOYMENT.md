@@ -31,7 +31,15 @@ The build disables source maps, uses Vite production minification, writes hashed
 
 The selected deployment target is Sites because it can host the compiled static/PWA artifact over HTTPS without making this source repository public.
 
+Current production URL:
+
+```text
+https://axiom-web.curiosityengine.chatgpt.site/
+```
+
 The hosted artifact contains only runtime files from `dist/`, plus Sites hosting metadata injected during packaging.
+
+The Sites Worker generated during `pnpm build` embeds the production runtime files so the deployment serves the app shell, manifest, service worker, hashed assets, and bundled catalog data without exposing the source tree.
 
 ## PWA Notes
 

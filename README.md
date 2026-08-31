@@ -64,6 +64,16 @@ pnpm preview
 
 The production build includes the manifest and service worker needed for PWA installation and offline shell caching.
 
+## Deployment
+
+The current tester URL is:
+
+```text
+https://axiom-web.curiosityengine.chatgpt.site/
+```
+
+The deployment publishes only the production `dist/` artifact. Source, tests, docs, local environment files, source maps, and git metadata are not part of the hosted output.
+
 ## Project Layout
 
 ```text
