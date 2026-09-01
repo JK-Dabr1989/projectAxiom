@@ -3,7 +3,9 @@ export type UpdateStatus = "unsupported" | "current" | "available";
 export function registerServiceWorker(onUpdate: () => void): void {
   if (!("serviceWorker" in navigator) || import.meta.env.DEV) return;
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").then((registration) => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
+      scope: import.meta.env.BASE_URL
+    }).then((registration) => {
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
         if (!worker) return;

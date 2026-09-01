@@ -29,28 +29,37 @@ The build disables source maps, uses Vite production minification, writes hashed
 
 ## Hosting
 
-The selected deployment target is Sites because it can host the compiled static/PWA artifact over HTTPS without making this source repository public.
+The selected deployment target is the existing Project Axiom GitHub Pages site and custom domain.
 
 Current production URL:
 
 ```text
-https://axiom-web.curiosityengine.chatgpt.site/
+https://projectaxiom.info/app/
 ```
 
-The hosted artifact contains only runtime files from `dist/`, plus Sites hosting metadata injected during packaging.
+Deployment model:
 
-The Sites Worker generated during `pnpm build` embeds the production runtime files so the deployment serves the app shell, manifest, service worker, hashed assets, and bundled catalog data without exposing the source tree.
+```text
+private Axiom Web source
+-> GitHub Actions validation
+-> Vite production build
+-> artifact leak check
+-> public projectAxiom/app/ runtime files
+-> GitHub Pages at projectaxiom.info/app/
+```
+
+The hosted artifact contains only runtime files from `dist/`. The readable Web App source remains private and is not copied into the public website repository.
 
 ## PWA Notes
 
-The manifest and service worker assume root hosting:
+The manifest and service worker assume `/app/` hosting:
 
-- `start_url: /`
-- `scope: /`
-- icons under `/icons/`
-- service worker at `/sw.js`
+- `start_url: /app/`
+- `scope: /app/`
+- icons under `/app/icons/`
+- service worker at `/app/sw.js`
 
-If Axiom Web is later hosted under a sub-path, update Vite base paths, manifest paths, and service-worker cache URLs before deployment.
+If Axiom Web is later hosted at another path, update Vite base paths, manifest paths, and service-worker cache URLs before deployment.
 
 ## Update Behaviour
 
@@ -60,6 +69,6 @@ Service-worker cache cleanup does not touch IndexedDB. Tester data remains local
 
 ## Rollback
 
-Redeploy a previous saved hosting version if a release must be rolled back.
+Revert or replace the `app/` artifact commit in `JK-Dabr1989/projectAxiom` if a release must be rolled back.
 
 Tester IndexedDB data is not cleared by rollback.

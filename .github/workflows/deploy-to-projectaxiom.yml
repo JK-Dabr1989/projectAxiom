@@ -1,0 +1,64 @@
+name: Deploy Axiom Web to projectaxiom.info/app
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out private Axiom Web source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Typecheck
+        run: pnpm lint
+
+      - name: Build production artifact
+        run: pnpm build
+
+      - name: Verify production artifact
+        run: pnpm verify:artifact
+
+      - name: Check out public Project Axiom website
+        uses: actions/checkout@v4
+        with:
+          repository: JK-Dabr1989/projectAxiom
+          token: ${{ secrets.PROJECTAXIOM_APP_DEPLOY_TOKEN }}
+          path: public-site
+
+      - name: Replace only public app artifact
+        run: |
+          rm -rf public-site/app
+          mkdir -p public-site/app
+          cp -R dist/. public-site/app/
+
+      - name: Commit artifact to public website
+        working-directory: public-site
+        run: |
+          git config user.name "axiom-web-deploy"
+          git config user.email "axiom-web-deploy@users.noreply.github.com"
+          git add app
+          git diff --cached --quiet && exit 0
+          git commit -m "Deploy Axiom Web app artifact"
+          git push

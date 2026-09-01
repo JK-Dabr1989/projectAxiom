@@ -12,6 +12,7 @@ const gitSha = (() => {
 })();
 
 export default defineConfig({
+  base: "/app/",
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),

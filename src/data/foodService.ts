@@ -6,7 +6,7 @@ export interface FoodSearchResult {
 }
 
 export async function loadFoodCatalog(): Promise<FoodCatalogItem[]> {
-  const response = await fetch("/food_catalog.json");
+  const response = await fetch(`${import.meta.env.BASE_URL}food_catalog.json`);
   if (!response.ok) throw new Error("Unable to load bundled food catalog.");
   return response.json();
 }

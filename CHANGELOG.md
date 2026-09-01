@@ -28,4 +28,5 @@
 - Added Web-specific Help/Setup guidance.
 - Added confirmation prompts for local reset and destructive restore.
 - Updated README and parity documentation for PWA/offline validation status.
-- Prepared the production deployment path with source-map-disabled Vite builds, hashed assets, artifact-only Sites packaging, source/artifact leakage checks, and the public tester URL.
+- Migrated deployment planning away from the temporary ChatGPT Sites URL toward the existing Project Axiom GitHub Pages domain at `https://projectaxiom.info/app/`.
+- Configured `/app/` Vite/PWA paths, artifact leak checks, and a private-source GitHub Actions deployment workflow that publishes only built runtime files to `projectAxiom/app/`.

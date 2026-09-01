@@ -1,12 +1,13 @@
-const CACHE_NAME = "axiom-web-shell-v4";
+const CACHE_NAME = "axiom-web-shell-v5";
+const BASE_PATH = "/app";
 const CORE_ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.webmanifest",
-  "/food_catalog.json",
-  "/food_keywords.json",
-  "/icons/icon-192.svg",
-  "/icons/icon-512.svg"
+  `${BASE_PATH}/`,
+  `${BASE_PATH}/index.html`,
+  `${BASE_PATH}/manifest.webmanifest`,
+  `${BASE_PATH}/food_catalog.json`,
+  `${BASE_PATH}/food_keywords.json`,
+  `${BASE_PATH}/icons/icon-192.svg`,
+  `${BASE_PATH}/icons/icon-512.svg`
 ];
 
 self.addEventListener("install", (event) => {
@@ -26,6 +27,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (!url.pathname.startsWith(`${BASE_PATH}/`) && url.pathname !== BASE_PATH) return;
 
   event.respondWith(
     caches.match(request).then((cached) => {
@@ -37,7 +39,7 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => cached || caches.match("/index.html"));
+        .catch(() => cached || caches.match(`${BASE_PATH}/index.html`));
       return cached || network;
     })
   );
