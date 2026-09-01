@@ -30,3 +30,5 @@
 - Updated README and parity documentation for PWA/offline validation status.
 - Migrated deployment planning away from the temporary ChatGPT Sites URL toward the existing Project Axiom GitHub Pages domain at `https://projectaxiom.info/app/`.
 - Configured `/app/` Vite/PWA paths, artifact leak checks, and a private-source GitHub Actions deployment workflow that publishes only built runtime files to `projectAxiom/app/`.
+- Replaced the permanent multi-button navigation grid with a compact top app bar, persistent five-item bottom navigation, and grouped More sheet for secondary destinations.
+- Scoped the hardware-unavailable banner to the Scale screen so unrelated workflows no longer appear unfinished.

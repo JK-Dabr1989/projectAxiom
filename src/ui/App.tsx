@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BookOpen, Camera, Database, HelpCircle, History, Home, Search, Settings, Scale, Tags, Trash2, UserRound } from "lucide-react";
+import { AlertTriangle, BookOpen, Camera, Database, Ellipsis, HelpCircle, History, Home, Search, Settings, Scale, Tags, Trash2, UserRound, X } from "lucide-react";
 import type { AppSettings, FoodCatalogItem, IdentityProfile, LogEntry, Recipe, RecipeIngredient, SourceMapping, UserIngredient } from "../domain/models";
 import { entriesForDate, groupEntriesByMeal } from "../domain/grouping";
 import { macrosForFood, recipeTotals } from "../domain/nutrition";
@@ -34,20 +34,33 @@ import { parseRawLogLines, parseStatusBlock, scaleRecordToLogEntry } from "../pr
 
 type Screen = "today" | "search" | "timeline" | "recipes" | "ingredients" | "barcode" | "passive" | "review" | "identities" | "data" | "help" | "settings" | "scale";
 
-const navItems: Array<{ screen: Screen; label: string; icon: typeof Home }> = [
+type NavItem = { screen: Screen; label: string; icon: typeof Home };
+
+const primaryNavItems: NavItem[] = [
   { screen: "today", label: "Today", icon: Home },
   { screen: "search", label: "Search", icon: Search },
   { screen: "timeline", label: "Timeline", icon: History },
   { screen: "recipes", label: "Recipes", icon: BookOpen },
-  { screen: "ingredients", label: "Ingredients", icon: Tags },
-  { screen: "barcode", label: "Barcode", icon: Camera },
-  { screen: "passive", label: "Quick-log", icon: Scale },
-  { screen: "review", label: "Review", icon: AlertTriangle },
-  { screen: "identities", label: "People", icon: UserRound },
-  { screen: "data", label: "Data", icon: Database },
-  { screen: "help", label: "Help", icon: HelpCircle },
-  { screen: "scale", label: "Scale", icon: Scale },
-  { screen: "settings", label: "Settings", icon: Settings },
+];
+
+const moreGroups: Array<{ title: string; items: NavItem[] }> = [
+  { title: "Libraries", items: [
+    { screen: "ingredients", label: "Ingredients", icon: Tags },
+    { screen: "barcode", label: "Barcode", icon: Camera },
+    { screen: "passive", label: "Quick-log", icon: Scale },
+  ] },
+  { title: "Review & People", items: [
+    { screen: "review", label: "Review", icon: AlertTriangle },
+    { screen: "identities", label: "People", icon: UserRound },
+  ] },
+  { title: "Device", items: [
+    { screen: "scale", label: "Scale", icon: Scale },
+  ] },
+  { title: "App", items: [
+    { screen: "data", label: "Data", icon: Database },
+    { screen: "settings", label: "Settings", icon: Settings },
+    { screen: "help", label: "Help", icon: HelpCircle },
+  ] },
 ];
 
 export function App() {
@@ -65,11 +78,21 @@ export function App() {
   const [date, setDate] = useState(todayIso());
   const [message, setMessage] = useState("");
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     loadAll();
     registerServiceWorker(() => setUpdateAvailable(true));
   }, []);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMoreOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [moreOpen]);
 
   async function loadAll() {
     const [loadedCatalog, loadedIngredients, loadedLogs, loadedRecipes, loadedSettings, loadedIdentities, loadedMappings] = await Promise.all([
@@ -130,6 +153,11 @@ export function App() {
     setScreen("today");
   }
 
+  function navigate(nextScreen: Screen) {
+    setScreen(nextScreen);
+    setMoreOpen(false);
+  }
+
   if (!settings) return <main className="boot">Loading Axiom Web</main>;
   if (!settings.activationComplete) {
     return <OnboardingScreen settings={settings} onComplete={async (name) => {
@@ -141,18 +169,17 @@ export function App() {
 
   return (
     <div className="app">
-      <aside className="rail">
+      <header className="app-bar">
         <div className="brand"><span className="mark">AX</span><span>Axiom Web</span></div>
-        <nav>{navItems.map((item) => <NavButton key={item.screen} item={item} active={screen === item.screen} onClick={() => setScreen(item.screen)} />)}</nav>
-      </aside>
+        <div className="app-bar-status">
+          <span>{titleFor(screen)}</span>
+          <small>Scale pending</small>
+        </div>
+      </header>
       <main className="content">
-        <header className="topbar">
-          <div><p className="eyebrow">Local-first validation client</p><h1>{titleFor(screen)}</h1></div>
-          <div className="status-pill">Hardware unavailable until BLE firmware exists</div>
-        </header>
         {updateAvailable ? <div className="update-banner"><span>A newer Axiom build is ready.</span><button onClick={() => window.location.reload()}>Reload</button></div> : null}
         {message ? <p className="toast">{message}</p> : null}
-        {screen === "today" && <TodayScreen groups={groups} totals={totals} onLog={() => setScreen("search")} reviewCount={zeroWeightEntries.length + unknownEntries.length} onReview={() => setScreen("review")} />}
+        {screen === "today" && <TodayScreen groups={groups} totals={totals} onLog={() => navigate("search")} reviewCount={zeroWeightEntries.length + unknownEntries.length} onReview={() => navigate("review")} />}
         {screen === "search" && <SearchScreen query={query} setQuery={setQuery} results={searchResults} selectedFood={selectedFood} grams={grams} setGrams={setGrams} onSelect={(food) => setSelectedFoodId(food.id)} onLog={logFood} />}
         {screen === "timeline" && <TimelineScreen date={date} setDate={setDate} groups={groups} onUpdate={async (entry, nextGrams, meal) => { await upsertLog({ ...entry, grams: nextGrams, zeroWeightFlag: nextGrams === 0, mealLabelOverride: meal }); await loadAll(); }} onDelete={async (entryId) => { await deleteLog(entryId); await loadAll(); }} />}
         {screen === "recipes" && <RecipesScreen catalog={catalog} foodsById={foodsById} recipes={recipes} settings={settings} onSave={async (recipe) => { await upsertRecipe(recipe); await loadAll(); }} onDelete={async (recipeId) => { await deleteRecipe(recipeId); await loadAll(); }} onLog={async (entries) => { for (const entry of entries) await upsertLog(entry); await loadAll(); setScreen("today"); setMessage("Recipe logged"); }} />}
@@ -166,13 +193,56 @@ export function App() {
         {screen === "settings" && <SettingsScreen settings={settings} setSettings={setSettings} onReset={async () => { if (!window.confirm("Reset local Axiom data on this device? Export a backup first if you want to keep it.")) return; await resetLocalData(); await loadAll(); setMessage("Local app data reset"); }} />}
         {screen === "scale" && <ScaleScreen existingLogs={logs} mappings={sourceMappings} passiveItems={settings.passiveQuickLogItems} onImport={async (entries) => { for (const entry of entries) await upsertLog(entry); await loadAll(); }} />}
       </main>
+      <BottomNav currentScreen={screen} moreOpen={moreOpen} onNavigate={navigate} onMore={() => setMoreOpen((open) => !open)} />
+      <MoreSheet currentScreen={screen} open={moreOpen} onClose={() => setMoreOpen(false)} onNavigate={navigate} />
     </div>
   );
 }
 
-function NavButton({ item, active, onClick }: { item: { label: string; icon: typeof Home }; active: boolean; onClick: () => void }) {
+function BottomNav({ currentScreen, moreOpen, onNavigate, onMore }: { currentScreen: Screen; moreOpen: boolean; onNavigate: (screen: Screen) => void; onMore: () => void }) {
+  const moreActive = moreOpen || !primaryNavItems.some((item) => item.screen === currentScreen);
+  return (
+    <nav className="bottom-nav" aria-label="Primary">
+      {primaryNavItems.map((item) => <NavButton key={item.screen} item={item} active={currentScreen === item.screen} onClick={() => onNavigate(item.screen)} />)}
+      <button className={moreActive ? "nav-action active" : "nav-action"} onClick={onMore} aria-haspopup="dialog" aria-expanded={moreOpen} title="More">
+        <Ellipsis size={20} />
+        <span>More</span>
+      </button>
+    </nav>
+  );
+}
+
+function MoreSheet({ currentScreen, open, onClose, onNavigate }: { currentScreen: Screen; open: boolean; onClose: () => void; onNavigate: (screen: Screen) => void }) {
+  if (!open) return null;
+  return (
+    <div className="more-backdrop" role="presentation" onClick={onClose}>
+      <section className="more-sheet" role="dialog" aria-modal="true" aria-label="More destinations" onClick={(event) => event.stopPropagation()}>
+        <div className="sheet-grabber" />
+        <header className="sheet-header">
+          <div>
+            <p className="eyebrow">More</p>
+            <h2>Destinations</h2>
+          </div>
+          <button className="icon-button" onClick={onClose} aria-label="Close menu"><X size={20} /></button>
+        </header>
+        <div className="more-groups">
+          {moreGroups.map((group) => (
+            <section className="more-group" key={group.title}>
+              <h3>{group.title}</h3>
+              <div className="more-grid">
+                {group.items.map((item) => <NavButton key={item.screen} item={item} active={currentScreen === item.screen} onClick={() => onNavigate(item.screen)} />)}
+              </div>
+            </section>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function NavButton({ item, active, onClick }: { item: NavItem; active: boolean; onClick: () => void }) {
   const Icon = item.icon;
-  return <button className={active ? "active" : ""} onClick={onClick} title={item.label}><Icon size={19} /><span>{item.label}</span></button>;
+  return <button className={active ? "nav-action active" : "nav-action"} onClick={onClick} title={item.label}><Icon size={19} /><span>{item.label}</span></button>;
 }
 
 function OnboardingScreen({ settings, onComplete }: { settings: AppSettings; onComplete: (name: string) => void }) {
@@ -367,7 +437,7 @@ function ScaleScreen({ existingLogs, mappings, passiveItems, onImport }: { exist
     await onImport(entries);
     setStatus(`Mock ${deviceStatus.protocolVersion} import complete: ${entries.length} new event(s).`);
   }
-  return <section className="panel"><h2>Scale sync</h2><p className="muted">{status}</p><p className="muted">Manual logging, review, recipes, backup, and offline use are available now. Physical scale communication will be added behind the existing transport boundary in a later authorised build.</p><div className="button-row"><button onClick={tryUnavailable}>Check physical transport</button>{import.meta.env.DEV ? <><label><input type="checkbox" checked={mockEnabled} onChange={(event) => setMockEnabled(event.target.checked)} /> Development mock</label><button disabled={!mockEnabled} onClick={importMock}>Import mock log block</button></> : null}</div></section>;
+  return <section className="panel"><h2>Scale sync</h2><div className="status-pill">Hardware unavailable until BLE firmware exists</div><p className="muted">{status}</p><p className="muted">Manual logging, review, recipes, backup, and offline use are available now. Physical scale communication will be added behind the existing transport boundary in a later authorised build.</p><div className="button-row"><button onClick={tryUnavailable}>Check physical transport</button>{import.meta.env.DEV ? <><label><input type="checkbox" checked={mockEnabled} onChange={(event) => setMockEnabled(event.target.checked)} /> Development mock</label><button disabled={!mockEnabled} onClick={importMock}>Import mock log block</button></> : null}</div></section>;
 }
 
 function MealGroups({ groups, editable, onUpdate, onDelete }: { groups: ReturnType<typeof groupEntriesByMeal>; editable: boolean; onUpdate?: (entry: LogEntry, grams: number, meal: string) => void; onDelete?: (entryId: string) => void }) {
