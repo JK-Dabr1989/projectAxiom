@@ -25,7 +25,7 @@ pnpm lint
 pnpm build
 ```
 
-The build disables source maps, uses Vite production minification, writes hashed JS/CSS asset names, and creates a small Sites-compatible static Worker entrypoint at `dist/server/index.js`.
+The build disables source maps, uses Vite production minification, writes hashed JS/CSS asset names, and copies `index.html` to `404.html` for static hosting fallback.
 
 ## Hosting
 
@@ -44,7 +44,7 @@ private Axiom Web source
 -> GitHub Actions validation
 -> Vite production build
 -> artifact leak check
--> public projectAxiom/app/ runtime files
+-> public projectAxiom gh-pages:/app/ runtime files
 -> GitHub Pages at projectaxiom.info/app/
 ```
 
@@ -69,6 +69,6 @@ Service-worker cache cleanup does not touch IndexedDB. Tester data remains local
 
 ## Rollback
 
-Revert or replace the `app/` artifact commit in `JK-Dabr1989/projectAxiom` if a release must be rolled back.
+Revert or replace the `app/` artifact commit on `JK-Dabr1989/projectAxiom` `gh-pages` if a release must be rolled back.
 
 Tester IndexedDB data is not cleared by rollback.
