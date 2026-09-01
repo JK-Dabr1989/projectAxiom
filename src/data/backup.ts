@@ -1,4 +1,4 @@
-import type { AppSettings, AxiomBackup, IdentityProfile, LogEntry, Recipe, SourceMapping, UserIngredient } from "../domain/models";
+import type { AppSettings, AxiomBackup, FoodPreference, IdentityProfile, LogEntry, Recipe, SourceMapping, UserIngredient } from "../domain/models";
 
 export const BACKUP_VERSION = "axiom-web-backup-v1";
 
@@ -9,6 +9,7 @@ export function buildBackup(input: {
   ingredients: UserIngredient[];
   identities: IdentityProfile[];
   sourceMappings: SourceMapping[];
+  foodPreferences?: FoodPreference[];
   exportedAt?: string;
 }): AxiomBackup {
   return {
@@ -21,6 +22,7 @@ export function buildBackup(input: {
       ingredients: input.ingredients,
       identities: input.identities,
       sourceMappings: input.sourceMappings,
+      foodPreferences: input.foodPreferences ?? [],
     },
   };
 }
@@ -41,7 +43,8 @@ export function decodeBackup(rawJson: string): AxiomBackup {
   if (!Array.isArray(parsed.data.logs) || !Array.isArray(parsed.data.recipes) || !Array.isArray(parsed.data.ingredients) || !Array.isArray(parsed.data.identities) || !Array.isArray(parsed.data.sourceMappings)) {
     throw new Error("Backup data is incomplete or malformed.");
   }
-  return parsed as unknown as AxiomBackup;
+  const backup = parsed as unknown as AxiomBackup;
+  return { ...backup, data: { ...backup.data, foodPreferences: Array.isArray(backup.data.foodPreferences) ? backup.data.foodPreferences : [] } };
 }
 
 export function logsToCsv(logs: LogEntry[], foodName: (foodId: string) => string): string {

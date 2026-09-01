@@ -1,8 +1,8 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { AppSettings, IdentityProfile, LogEntry, Recipe, SourceMapping, UserIngredient } from "../domain/models";
+import type { AppSettings, FoodPreference, IdentityProfile, LogEntry, Recipe, SourceMapping, UserIngredient } from "../domain/models";
 
 const DB_NAME = "axiom-web-local";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 interface AxiomWebDb extends DBSchema {
   settings: {
@@ -32,6 +32,11 @@ interface AxiomWebDb extends DBSchema {
     key: string;
     value: SourceMapping;
   };
+  foodPreferences: {
+    key: string;
+    value: FoodPreference;
+    indexes: { "by-lastSelectedAt": string };
+  };
 }
 
 let dbPromise: Promise<IDBPDatabase<AxiomWebDb>> | null = null;
@@ -50,6 +55,13 @@ export function defaultSettings(): AppSettings {
     genericReviewEnabled: true,
     genericWeekRefinementEnabled: true,
     genericYellowIndicatorEnabled: true,
+    autoZeroWeightCleanupEnabled: false,
+    autoZeroWeightCleanupDays: 7,
+    genericAutoAcceptEnabled: false,
+    genericAutoAcceptDays: 7,
+    identityEnabled: true,
+    showDefaultIdentity: true,
+    identityInactivityTimeoutMinutes: 60,
     fatButtonItemId: "fd_butter",
     fatButtonItemName: "Butter",
     fatButtonFixed: true,
@@ -73,25 +85,47 @@ export function defaultIdentity(): IdentityProfile {
 async function db(): Promise<IDBPDatabase<AxiomWebDb>> {
   dbPromise ??= openDB<AxiomWebDb>(DB_NAME, DB_VERSION, {
     upgrade(database) {
-      database.createObjectStore("settings");
-      const logs = database.createObjectStore("logs", { keyPath: "id" });
-      logs.createIndex("by-timestamp", "timestamp");
-      logs.createIndex("by-logHash", "logHash", { unique: true });
-      const recipes = database.createObjectStore("recipes", { keyPath: "id" });
-      recipes.createIndex("by-createdAt", "createdAt");
-      const ingredients = database.createObjectStore("ingredients", { keyPath: "id" });
-      ingredients.createIndex("by-updatedAt", "updatedAt");
-      database.createObjectStore("identities", { keyPath: "identityId" });
-      database.createObjectStore("sourceMappings", { keyPath: "sourceKey" });
+      if (!database.objectStoreNames.contains("settings")) database.createObjectStore("settings");
+      if (!database.objectStoreNames.contains("logs")) {
+        const logs = database.createObjectStore("logs", { keyPath: "id" });
+        logs.createIndex("by-timestamp", "timestamp");
+        logs.createIndex("by-logHash", "logHash", { unique: true });
+      }
+      if (!database.objectStoreNames.contains("recipes")) {
+        const recipes = database.createObjectStore("recipes", { keyPath: "id" });
+        recipes.createIndex("by-createdAt", "createdAt");
+      }
+      if (!database.objectStoreNames.contains("ingredients")) {
+        const ingredients = database.createObjectStore("ingredients", { keyPath: "id" });
+        ingredients.createIndex("by-updatedAt", "updatedAt");
+      }
+      if (!database.objectStoreNames.contains("identities")) database.createObjectStore("identities", { keyPath: "identityId" });
+      if (!database.objectStoreNames.contains("sourceMappings")) database.createObjectStore("sourceMappings", { keyPath: "sourceKey" });
+      if (!database.objectStoreNames.contains("foodPreferences")) {
+        const foodPreferences = database.createObjectStore("foodPreferences", { keyPath: "foodId" });
+        foodPreferences.createIndex("by-lastSelectedAt", "lastSelectedAt");
+      }
     },
   });
   return dbPromise;
 }
 
+function normalizeSettings(settings: AppSettings): AppSettings {
+  return {
+    ...defaultSettings(),
+    ...settings,
+    passiveQuickLogItems: settings.passiveQuickLogItems ?? [],
+  };
+}
+
 export async function getSettings(): Promise<AppSettings> {
   const database = await db();
   const existing = await database.get("settings", "app");
-  if (existing) return existing;
+  if (existing) {
+    const normalized = normalizeSettings(existing);
+    await database.put("settings", normalized, "app");
+    return normalized;
+  }
   const created = defaultSettings();
   await database.put("settings", created, "app");
   return created;
@@ -167,6 +201,36 @@ export async function upsertSourceMapping(mapping: SourceMapping): Promise<void>
   await (await db()).put("sourceMappings", mapping);
 }
 
+export async function getFoodPreferences(): Promise<FoodPreference[]> {
+  const database = await db();
+  const preferences = await database.getAll("foodPreferences");
+  return preferences.sort((a, b) => (b.lastSelectedAt ?? "").localeCompare(a.lastSelectedAt ?? ""));
+}
+
+export async function recordFoodSelection(foodId: string): Promise<void> {
+  const database = await db();
+  const existing = await database.get("foodPreferences", foodId);
+  await database.put("foodPreferences", {
+    foodId,
+    isFavorite: existing?.isFavorite ?? false,
+    selectionCount: (existing?.selectionCount ?? 0) + 1,
+    lastSelectedAt: new Date().toISOString(),
+  });
+}
+
+export async function toggleFoodFavorite(foodId: string): Promise<FoodPreference> {
+  const database = await db();
+  const existing = await database.get("foodPreferences", foodId);
+  const next: FoodPreference = {
+    foodId,
+    isFavorite: !(existing?.isFavorite ?? false),
+    selectionCount: existing?.selectionCount ?? 0,
+    lastSelectedAt: existing?.lastSelectedAt ?? null,
+  };
+  await database.put("foodPreferences", next);
+  return next;
+}
+
 export async function upsertRecipe(recipe: Recipe): Promise<void> {
   const database = await db();
   await database.put("recipes", recipe);
@@ -179,7 +243,7 @@ export async function deleteRecipe(recipeId: string): Promise<void> {
 
 export async function resetLocalData(): Promise<void> {
   const database = await db();
-  await Promise.all([database.clear("logs"), database.clear("recipes"), database.clear("ingredients"), database.clear("identities"), database.clear("sourceMappings")]);
+  await Promise.all([database.clear("logs"), database.clear("recipes"), database.clear("ingredients"), database.clear("identities"), database.clear("sourceMappings"), database.clear("foodPreferences")]);
   await saveSettings(defaultSettings());
   await database.put("identities", defaultIdentity());
 }
@@ -191,15 +255,17 @@ export async function replaceAllData(payload: {
   ingredients: UserIngredient[];
   identities: IdentityProfile[];
   sourceMappings: SourceMapping[];
+  foodPreferences?: FoodPreference[];
 }): Promise<void> {
   const database = await db();
-  const tx = database.transaction(["settings", "logs", "recipes", "ingredients", "identities", "sourceMappings"], "readwrite");
-  await Promise.all([tx.objectStore("logs").clear(), tx.objectStore("recipes").clear(), tx.objectStore("ingredients").clear(), tx.objectStore("identities").clear(), tx.objectStore("sourceMappings").clear()]);
-  await tx.objectStore("settings").put(payload.settings, "app");
+  const tx = database.transaction(["settings", "logs", "recipes", "ingredients", "identities", "sourceMappings", "foodPreferences"], "readwrite");
+  await Promise.all([tx.objectStore("logs").clear(), tx.objectStore("recipes").clear(), tx.objectStore("ingredients").clear(), tx.objectStore("identities").clear(), tx.objectStore("sourceMappings").clear(), tx.objectStore("foodPreferences").clear()]);
+  await tx.objectStore("settings").put(normalizeSettings(payload.settings), "app");
   await Promise.all(payload.logs.map((entry) => tx.objectStore("logs").put(entry)));
   await Promise.all(payload.recipes.map((recipe) => tx.objectStore("recipes").put(recipe)));
   await Promise.all(payload.ingredients.map((ingredient) => tx.objectStore("ingredients").put(ingredient)));
   await Promise.all(payload.identities.map((identity) => tx.objectStore("identities").put(identity)));
   await Promise.all(payload.sourceMappings.map((mapping) => tx.objectStore("sourceMappings").put(mapping)));
+  await Promise.all((payload.foodPreferences ?? []).map((preference) => tx.objectStore("foodPreferences").put(preference)));
   await tx.done;
 }

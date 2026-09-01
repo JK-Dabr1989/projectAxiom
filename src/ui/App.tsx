@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BookOpen, Camera, Database, Ellipsis, HelpCircle, History, Home, Search, Settings, Scale, Tags, Trash2, UserRound, X } from "lucide-react";
-import type { AppSettings, FoodCatalogItem, IdentityProfile, LogEntry, Recipe, RecipeIngredient, SourceMapping, UserIngredient } from "../domain/models";
+import { AlertTriangle, BookOpen, Camera, Database, Edit3, Ellipsis, HelpCircle, History, Home, Search, Settings, Scale, Star, Tags, Trash2, UserRound, X } from "lucide-react";
+import type { AppSettings, FoodCatalogItem, FoodPreference, IdentityProfile, LogEntry, Recipe, RecipeIngredient, SourceMapping, UserIngredient } from "../domain/models";
 import { entriesForDate, groupEntriesByMeal } from "../domain/grouping";
 import { macrosForFood, recipeTotals } from "../domain/nutrition";
 import { ingredientToCatalogItem, loadFoodCatalog, searchFoods } from "../data/foodService";
@@ -14,6 +14,7 @@ import {
   deleteIdentity,
   deleteLog,
   deleteRecipe,
+  getFoodPreferences,
   getIdentities,
   getIngredients,
   getLogs,
@@ -23,6 +24,8 @@ import {
   replaceAllData,
   resetLocalData,
   saveSettings,
+  recordFoodSelection,
+  toggleFoodFavorite,
   upsertIdentity,
   upsertIngredient,
   upsertLog,
@@ -32,7 +35,7 @@ import {
 import { UnavailableScaleTransport } from "../hardware/ScaleTransport";
 import { parseRawLogLines, parseStatusBlock, scaleRecordToLogEntry } from "../protocol/smartScaleProtocol";
 
-type Screen = "today" | "search" | "timeline" | "recipes" | "ingredients" | "barcode" | "passive" | "review" | "identities" | "data" | "help" | "settings" | "scale";
+type Screen = "today" | "search" | "timeline" | "recipes" | "ingredients" | "generic" | "barcode" | "passive" | "review" | "identities" | "data" | "help" | "settings" | "scale";
 
 type NavItem = { screen: Screen; label: string; icon: typeof Home };
 
@@ -46,6 +49,7 @@ const primaryNavItems: NavItem[] = [
 const moreGroups: Array<{ title: string; items: NavItem[] }> = [
   { title: "Libraries", items: [
     { screen: "ingredients", label: "Ingredients", icon: Tags },
+    { screen: "generic", label: "Generic", icon: HelpCircle },
     { screen: "barcode", label: "Barcode", icon: Camera },
     { screen: "passive", label: "Quick-log", icon: Scale },
   ] },
@@ -70,6 +74,7 @@ export function App() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [identities, setIdentities] = useState<IdentityProfile[]>([]);
   const [sourceMappings, setSourceMappings] = useState<SourceMapping[]>([]);
+  const [foodPreferences, setFoodPreferences] = useState<FoodPreference[]>([]);
   const [settings, setSettingsState] = useState<AppSettings | null>(null);
   const [screen, setScreen] = useState<Screen>("today");
   const [query, setQuery] = useState("");
@@ -95,7 +100,7 @@ export function App() {
   }, [moreOpen]);
 
   async function loadAll() {
-    const [loadedCatalog, loadedIngredients, loadedLogs, loadedRecipes, loadedSettings, loadedIdentities, loadedMappings] = await Promise.all([
+    const [loadedCatalog, loadedIngredients, loadedLogs, loadedRecipes, loadedSettings, loadedIdentities, loadedMappings, loadedPreferences] = await Promise.all([
       loadFoodCatalog(),
       getIngredients(),
       getLogs(),
@@ -103,6 +108,7 @@ export function App() {
       getSettings(),
       getIdentities(),
       getSourceMappings(),
+      getFoodPreferences(),
     ]);
     setBaseCatalog(loadedCatalog);
     setIngredients(loadedIngredients);
@@ -111,11 +117,16 @@ export function App() {
     setSettingsState(loadedSettings);
     setIdentities(loadedIdentities);
     setSourceMappings(loadedMappings);
+    setFoodPreferences(loadedPreferences);
   }
 
   const catalog = useMemo(() => [...ingredients.map(ingredientToCatalogItem), ...baseCatalog], [ingredients, baseCatalog]);
   const foodsById = useMemo(() => new Map(catalog.map((food) => [food.id, food])), [catalog]);
   const selectedFood = selectedFoodId ? foodsById.get(selectedFoodId) : undefined;
+  const favoriteIds = useMemo(() => new Set(foodPreferences.filter((preference) => preference.isFavorite).map((preference) => preference.foodId)), [foodPreferences]);
+  const favoriteFoods = useMemo(() => catalog.filter((food) => favoriteIds.has(food.id)).slice(0, 12), [catalog, favoriteIds]);
+  const recentFoods = useMemo(() => foodPreferences.filter((preference) => preference.lastSelectedAt && foodsById.has(preference.foodId)).sort((a, b) => (b.lastSelectedAt ?? "").localeCompare(a.lastSelectedAt ?? "")).map((preference) => foodsById.get(preference.foodId)!).slice(0, 12), [foodPreferences, foodsById]);
+  const favoriteRecipeIds = useMemo(() => new Set(foodPreferences.filter((preference) => preference.isFavorite && preference.foodId.startsWith("recipe:")).map((preference) => preference.foodId.slice("recipe:".length))), [foodPreferences]);
   const visibleDateLogs = useMemo(() => entriesForDate(logs, date), [logs, date]);
   const groups = useMemo(() => groupEntriesByMeal(visibleDateLogs, foodsById), [visibleDateLogs, foodsById]);
   const searchResults = useMemo(() => searchFoods(catalog, query, settings?.preferredStoreName), [catalog, query, settings?.preferredStoreName]);
@@ -128,6 +139,16 @@ export function App() {
 
   async function setSettings(next: AppSettings) {
     await saveSettings(next);
+    await loadAll();
+  }
+
+  async function rememberFood(foodId: string) {
+    await recordFoodSelection(foodId);
+    await loadAll();
+  }
+
+  async function toggleFavorite(foodId: string) {
+    await toggleFoodFavorite(foodId);
     await loadAll();
   }
 
@@ -147,6 +168,7 @@ export function App() {
       identitySource: "EXPLICIT",
       logHash: null,
     };
+    await recordFoodSelection(food.id);
     await upsertLog(entry);
     await loadAll();
     setMessage(`Logged ${Math.round(amount)}g ${food.displayName}`);
@@ -180,15 +202,16 @@ export function App() {
         {updateAvailable ? <div className="update-banner"><span>A newer Axiom build is ready.</span><button onClick={() => window.location.reload()}>Reload</button></div> : null}
         {message ? <p className="toast">{message}</p> : null}
         {screen === "today" && <TodayScreen groups={groups} totals={totals} onLog={() => navigate("search")} reviewCount={zeroWeightEntries.length + unknownEntries.length} onReview={() => navigate("review")} />}
-        {screen === "search" && <SearchScreen query={query} setQuery={setQuery} results={searchResults} selectedFood={selectedFood} grams={grams} setGrams={setGrams} onSelect={(food) => setSelectedFoodId(food.id)} onLog={logFood} />}
+        {screen === "search" && <SearchScreen query={query} setQuery={setQuery} results={searchResults} selectedFood={selectedFood} grams={grams} setGrams={setGrams} favoriteFoods={favoriteFoods} recentFoods={recentFoods} isFavorite={(foodId) => favoriteIds.has(foodId)} onToggleFavorite={toggleFavorite} onSelect={(food) => { setSelectedFoodId(food.id); void rememberFood(food.id); }} onLog={logFood} />}
         {screen === "timeline" && <TimelineScreen date={date} setDate={setDate} groups={groups} onUpdate={async (entry, nextGrams, meal) => { await upsertLog({ ...entry, grams: nextGrams, zeroWeightFlag: nextGrams === 0, mealLabelOverride: meal }); await loadAll(); }} onDelete={async (entryId) => { await deleteLog(entryId); await loadAll(); }} />}
-        {screen === "recipes" && <RecipesScreen catalog={catalog} foodsById={foodsById} recipes={recipes} settings={settings} onSave={async (recipe) => { await upsertRecipe(recipe); await loadAll(); }} onDelete={async (recipeId) => { await deleteRecipe(recipeId); await loadAll(); }} onLog={async (entries) => { for (const entry of entries) await upsertLog(entry); await loadAll(); setScreen("today"); setMessage("Recipe logged"); }} />}
+        {screen === "recipes" && <RecipesScreen catalog={catalog} foodsById={foodsById} recipes={recipes} settings={settings} favoriteRecipeIds={favoriteRecipeIds} onToggleFavorite={(recipeId) => toggleFavorite(`recipe:${recipeId}`)} onSave={async (recipe) => { await upsertRecipe(recipe); await loadAll(); }} onDelete={async (recipeId) => { await deleteRecipe(recipeId); await loadAll(); }} onLog={async (entries) => { for (const entry of entries) await upsertLog(entry); await loadAll(); setScreen("today"); setMessage("Recipe logged"); }} />}
         {screen === "ingredients" && <IngredientsScreen ingredients={ingredients} logs={logs} recipes={recipes} onSave={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); }} onDelete={async (id) => { await deleteIngredient(id); await loadAll(); }} />}
+        {screen === "generic" && <GenericTokensScreen ingredients={ingredients} logs={logs} onSave={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); }} onDelete={async (id) => { await deleteIngredient(id); await loadAll(); }} />}
         {screen === "barcode" && <BarcodeScreen onSave={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); setScreen("ingredients"); setMessage("Barcode ingredient saved"); }} />}
         {screen === "passive" && <PassiveScreen settings={settings} identities={identities} catalog={catalog} onSave={async (nextSettings, ingredient) => { if (ingredient) await upsertIngredient(ingredient); await setSettings(nextSettings); }} />}
         {screen === "review" && <ReviewScreen zeroWeightEntries={zeroWeightEntries} unknownEntries={unknownEntries} foodsById={foodsById} searchResults={searchResults} query={query} setQuery={setQuery} onResolveZero={async (entry, nextGrams) => { await upsertLog(resolveZeroWeight(entry, nextGrams)); await loadAll(); }} onDelete={async (id) => { await deleteLog(id); await loadAll(); }} onResolveUnknown={async (entry, foodId) => { const resolved = resolveUnknownEntry(entry, foodId); await upsertLog(resolved); const key = sourceKeyForEntry(entry); if (key) await upsertSourceMapping({ sourceKey: key, foodId, displayName: foodsById.get(foodId)?.displayName ?? foodId, updatedAt: new Date().toISOString() }); await loadAll(); }} />}
         {screen === "identities" && <IdentitiesScreen identities={identities} settings={settings} onSave={async (identity) => { await upsertIdentity(identity); await loadAll(); }} onDelete={async (id) => { await deleteIdentity(id); if (settings.activeIdentityId === id) await saveSettings({ ...settings, activeIdentityId: "default", activeIdentityName: "Default" }); await loadAll(); }} onSwitch={async (identity) => setSettings({ ...settings, activeIdentityId: identity.identityId, activeIdentityName: identity.identityName })} />}
-        {screen === "data" && <DataScreen settings={settings} logs={logs} recipes={recipes} ingredients={ingredients} identities={identities} sourceMappings={sourceMappings} foodsById={foodsById} onRestored={loadAll} />}
+        {screen === "data" && <DataScreen settings={settings} logs={logs} recipes={recipes} ingredients={ingredients} identities={identities} sourceMappings={sourceMappings} foodPreferences={foodPreferences} foodsById={foodsById} onRestored={loadAll} />}
         {screen === "help" && <HelpScreen />}
         {screen === "settings" && <SettingsScreen settings={settings} setSettings={setSettings} onReset={async () => { if (!window.confirm("Reset local Axiom data on this device? Export a backup first if you want to keep it.")) return; await resetLocalData(); await loadAll(); setMessage("Local app data reset"); }} />}
         {screen === "scale" && <ScaleScreen existingLogs={logs} mappings={sourceMappings} passiveItems={settings.passiveQuickLogItems} onImport={async (entries) => { for (const entry of entries) await upsertLog(entry); await loadAll(); }} />}
@@ -254,13 +277,18 @@ function TodayScreen({ groups, totals, reviewCount, onLog, onReview }: { groups:
   return <section className="stack"><div className="metrics"><Metric label="Calories" value={Math.round(totals.kcal).toString()} unit="kcal" /><Metric label="Protein" value={totals.protein.toFixed(1)} unit="g" /><Metric label="Carbs" value={totals.carbs.toFixed(1)} unit="g" /><Metric label="Fat" value={totals.fat.toFixed(1)} unit="g" /></div><div className="button-row"><button className="primary" onClick={onLog}>Log food</button><button onClick={onReview}>Review {reviewCount}</button></div><MealGroups groups={groups} editable={false} /></section>;
 }
 
-function SearchScreen(props: { query: string; setQuery: (value: string) => void; results: ReturnType<typeof searchFoods>; selectedFood?: FoodCatalogItem; grams: number; setGrams: (value: number) => void; onSelect: (food: FoodCatalogItem) => void; onLog: (food: FoodCatalogItem, grams: number, mealLabel?: string) => void }) {
+function SearchScreen(props: { query: string; setQuery: (value: string) => void; results: ReturnType<typeof searchFoods>; selectedFood?: FoodCatalogItem; grams: number; setGrams: (value: number) => void; favoriteFoods: FoodCatalogItem[]; recentFoods: FoodCatalogItem[]; isFavorite: (foodId: string) => boolean; onToggleFavorite: (foodId: string) => void; onSelect: (food: FoodCatalogItem) => void; onLog: (food: FoodCatalogItem, grams: number, mealLabel?: string) => void }) {
   const preview = props.selectedFood ? macrosForFood(props.selectedFood, props.grams) : null;
-  return <section className="split"><FoodResultPanel query={props.query} setQuery={props.setQuery} results={props.results} onSelect={props.onSelect} /><div className="panel sticky">{props.selectedFood ? <><h2>{props.selectedFood.displayName}</h2><p className="muted">{[props.selectedFood.brandName, props.selectedFood.storeName, props.selectedFood.uxCategory].filter(Boolean).join(" | ")}</p><label>Grams<input type="number" min="0" step="1" value={props.grams} onChange={(event) => props.setGrams(Number(event.target.value))} /></label>{preview ? <MacroStrip macros={preview} /> : null}<div className="button-row">{["breakfast", "lunch", "dinner", "snacks"].map((meal) => <button key={meal} onClick={() => props.onLog(props.selectedFood!, props.grams, meal)}>{meal}</button>)}</div></> : <p className="muted">Select a food to preview macros and log it manually.</p>}</div></section>;
+  return <section className="split"><FoodResultPanel query={props.query} setQuery={props.setQuery} results={props.results} favoriteFoods={props.favoriteFoods} recentFoods={props.recentFoods} onSelect={props.onSelect} /><div className="panel sticky">{props.selectedFood ? <><div className="title-row"><h2>{props.selectedFood.displayName}</h2><button className={props.isFavorite(props.selectedFood.id) ? "icon-button favorite active" : "icon-button favorite"} title="Favorite" onClick={() => props.onToggleFavorite(props.selectedFood!.id)}><Star size={19} /></button></div><p className="muted">{[props.selectedFood.brandName, props.selectedFood.storeName, props.selectedFood.uxCategory].filter(Boolean).join(" | ")}</p><p className="muted">{Math.round(props.selectedFood.kcal100g)} kcal/100g | P {props.selectedFood.protein100g.toFixed(1)}g | C {props.selectedFood.carbs100g.toFixed(1)}g | F {props.selectedFood.fat100g.toFixed(1)}g</p><label>Grams<input type="number" min="0" step="1" value={props.grams} onChange={(event) => props.setGrams(Number(event.target.value))} /></label>{preview ? <MacroStrip macros={preview} /> : null}<div className="button-row">{["breakfast", "lunch", "dinner", "snacks"].map((meal) => <button key={meal} onClick={() => props.onLog(props.selectedFood!, props.grams, meal)}>{meal}</button>)}</div></> : <p className="muted">Select a food to preview macros and log it manually.</p>}</div></section>;
 }
 
-function FoodResultPanel({ query, setQuery, results, onSelect }: { query: string; setQuery: (value: string) => void; results: ReturnType<typeof searchFoods>; onSelect: (food: FoodCatalogItem) => void }) {
-  return <div className="panel"><input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search foods and ingredients" /><div className="result-list">{results.map(({ food, score }) => <button key={food.id} className="result-row" onClick={() => onSelect(food)}><span className="thumb">{food.thumbnailLabel || food.displayName.slice(0, 2)}</span><span><strong>{food.displayName}</strong><small>{[food.brandName, food.storeName, food.stateCandidate].filter(Boolean).join(" | ")}</small></span><em>{score}</em></button>)}</div></div>;
+function FoodResultPanel({ query, setQuery, results, favoriteFoods = [], recentFoods = [], onSelect }: { query: string; setQuery: (value: string) => void; results: ReturnType<typeof searchFoods>; favoriteFoods?: FoodCatalogItem[]; recentFoods?: FoodCatalogItem[]; onSelect: (food: FoodCatalogItem) => void }) {
+  const showLanding = query.trim().length === 0 && (favoriteFoods.length > 0 || recentFoods.length > 0);
+  return <div className="panel"><input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search foods and ingredients" />{showLanding ? <div className="quick-pick-stack">{favoriteFoods.length > 0 ? <QuickPickSection title="Favorites" foods={favoriteFoods} onSelect={onSelect} /> : null}{recentFoods.length > 0 ? <QuickPickSection title="Recent" foods={recentFoods} onSelect={onSelect} /> : null}</div> : null}<div className="result-list">{results.map(({ food, score }) => <button key={food.id} className="result-row" onClick={() => onSelect(food)}><span className="thumb">{food.thumbnailLabel || food.displayName.slice(0, 2)}</span><span><strong>{food.displayName}</strong><small>{[food.brandName, food.storeName, food.stateCandidate].filter(Boolean).join(" | ")}</small></span><em>{score}</em></button>)}</div></div>;
+}
+
+function QuickPickSection({ title, foods, onSelect }: { title: string; foods: FoodCatalogItem[]; onSelect: (food: FoodCatalogItem) => void }) {
+  return <section><h3>{title}</h3><div className="quick-picks">{foods.map((food) => <button key={food.id} onClick={() => onSelect(food)}><span className="thumb">{food.thumbnailLabel || food.displayName.slice(0, 2)}</span><span>{food.displayName}</span></button>)}</div></section>;
 }
 
 function TimelineScreen({ date, setDate, groups, onUpdate, onDelete }: { date: string; setDate: (value: string) => void; groups: ReturnType<typeof groupEntriesByMeal>; onUpdate: (entry: LogEntry, grams: number, meal: string) => void; onDelete: (entryId: string) => void }) {
@@ -378,13 +406,48 @@ function IngredientForm({ ingredient, onSave }: { ingredient: UserIngredient | n
   return <div className="panel"><h2>{ingredient ? "Edit ingredient" : "Create ingredient"}</h2><label>Name<input value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label><label>Brand<input value={draft.brandName} onChange={(event) => setDraft({ ...draft, brandName: event.target.value })} /></label><label>Classification<input value={draft.classification} onChange={(event) => setDraft({ ...draft, classification: event.target.value })} /></label><div className="macro-edit"><label>kcal<input type="number" value={draft.kcal100g} onChange={(event) => setDraft({ ...draft, kcal100g: Number(event.target.value) })} /></label><label>Protein<input type="number" value={draft.protein100g} onChange={(event) => setDraft({ ...draft, protein100g: Number(event.target.value) })} /></label><label>Carbs<input type="number" value={draft.carbs100g} onChange={(event) => setDraft({ ...draft, carbs100g: Number(event.target.value) })} /></label><label>Fat<input type="number" value={draft.fat100g} onChange={(event) => setDraft({ ...draft, fat100g: Number(event.target.value) })} /></label></div><button className="primary" disabled={!draft.displayName.trim()} onClick={() => onSave({ ...draft, id: draft.id || `custom:${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`, updatedAt: new Date().toISOString() })}>Save ingredient</button></div>;
 }
 
-function RecipesScreen({ catalog, foodsById, recipes, settings, onSave, onDelete, onLog }: { catalog: FoodCatalogItem[]; foodsById: Map<string, FoodCatalogItem>; recipes: Recipe[]; settings: AppSettings; onSave: (recipe: Recipe) => void; onDelete: (recipeId: string) => void; onLog: (entries: LogEntry[]) => void }) {
+function GenericTokensScreen({ ingredients, logs, onSave, onDelete }: { ingredients: UserIngredient[]; logs: LogEntry[]; onSave: (ingredient: UserIngredient) => void; onDelete: (id: string) => void }) {
+  const [editing, setEditing] = useState<UserIngredient | null>(null);
+  const genericTokens = ingredients.filter((ingredient) => ingredient.sourceKind === "generic");
+  const usedIds = new Set(logs.map((log) => log.foodId));
+  return <section className="split"><GenericTokenForm token={editing} onSave={(token) => { onSave(token); setEditing(null); }} /><div className="panel"><h2>Generic token library</h2>{genericTokens.length === 0 ? <p className="muted">No generic tokens saved yet.</p> : null}{genericTokens.map((token) => <article className="recipe-card" key={token.id}><span className="thumb">{token.iconName || "G"}</span><div><h3>{token.displayName}</h3><p>{token.classification} | {token.kcal100g} kcal/100g</p></div><div className="button-row"><button title="Edit token" onClick={() => setEditing(token)}><Edit3 size={16} /></button><button disabled={usedIds.has(token.id)} title={usedIds.has(token.id) ? "Used by logs" : "Delete token"} onClick={() => onDelete(token.id)}><Trash2 size={16} /></button></div></article>)}</div></section>;
+}
+
+function GenericTokenForm({ token, onSave }: { token: UserIngredient | null; onSave: (ingredient: UserIngredient) => void }) {
+  const [draft, setDraft] = useState<UserIngredient>(token ?? blankGenericToken());
+  useEffect(() => setDraft(token ?? blankGenericToken()), [token]);
+  return <div className="panel"><h2>{token ? "Edit generic token" : "Create generic token"}</h2><label>Name<input value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} placeholder="Unknown cereal, shared snack, oil splash" /></label><div className="form-grid two"><label>Classification<input value={draft.classification} onChange={(event) => setDraft({ ...draft, classification: event.target.value })} /></label><label>Icon<input value={draft.iconName} onChange={(event) => setDraft({ ...draft, iconName: event.target.value })} /></label></div><div className="macro-edit"><label>kcal<input type="number" value={draft.kcal100g} onChange={(event) => setDraft({ ...draft, kcal100g: Number(event.target.value) })} /></label><label>Protein<input type="number" value={draft.protein100g} onChange={(event) => setDraft({ ...draft, protein100g: Number(event.target.value) })} /></label><label>Carbs<input type="number" value={draft.carbs100g} onChange={(event) => setDraft({ ...draft, carbs100g: Number(event.target.value) })} /></label><label>Fat<input type="number" value={draft.fat100g} onChange={(event) => setDraft({ ...draft, fat100g: Number(event.target.value) })} /></label></div><button className="primary" disabled={!draft.displayName.trim()} onClick={() => onSave({ ...draft, id: draft.id || `generic:${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`, brandName: draft.brandName || "Generic", sourceKind: "generic", updatedAt: new Date().toISOString() })}>Save generic token</button></div>;
+}
+
+function RecipesScreen({ catalog, foodsById, recipes, settings, favoriteRecipeIds, onToggleFavorite, onSave, onDelete, onLog }: { catalog: FoodCatalogItem[]; foodsById: Map<string, FoodCatalogItem>; recipes: Recipe[]; settings: AppSettings; favoriteRecipeIds: Set<string>; onToggleFavorite: (recipeId: string) => void; onSave: (recipe: Recipe) => void; onDelete: (recipeId: string) => void; onLog: (entries: LogEntry[]) => void }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [mealLabel, setMealLabel] = useState("dinner");
+  const [iconName, setIconName] = useState("");
   const [foodId, setFoodId] = useState("");
   const [grams, setGrams] = useState(100);
   const [portion, setPortion] = useState(300);
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
-  return <section className="split"><div className="panel"><h2>Create recipe</h2><label>Name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Recipe name" /></label><div className="inline-form"><select value={foodId} onChange={(event) => setFoodId(event.target.value)}><option value="">Choose ingredient</option>{catalog.slice(0, 600).map((food) => <option key={food.id} value={food.id}>{food.displayName}</option>)}</select><input type="number" value={grams} min="0" onChange={(event) => setGrams(Number(event.target.value))} /><button onClick={() => foodId && setIngredients([...ingredients, { foodId, grams }])}>Add</button></div><ul className="plain-list">{ingredients.map((ingredient, index) => <li key={`${ingredient.foodId}-${index}`}>{foodsById.get(ingredient.foodId)?.displayName ?? ingredient.foodId} - {ingredient.grams}g</li>)}</ul><button className="primary" disabled={!name || ingredients.length === 0} onClick={() => { onSave({ id: crypto.randomUUID(), name, type: "SINGLE", mealLabel: "dinner", iconName: "", ingredients, createdAt: new Date().toISOString(), lastWrittenTagId: null }); setName(""); setIngredients([]); }}>Save recipe</button></div><div className="panel"><h2>Recipe library</h2><label>Manual portion grams<input type="number" min="1" value={portion} onChange={(event) => setPortion(Number(event.target.value))} /></label>{recipes.map((recipe) => <article className="recipe-card" key={recipe.id}><div><h3>{recipe.name}</h3><p>{recipe.ingredients.length} ingredients | {Math.round(recipeTotals(recipe, foodsById).kcal)} kcal total</p></div><div className="button-row"><button onClick={() => onLog(recipePortionLogs(recipe, portion, todayIso(), settings.activeIdentityId, settings.activeIdentityName, recipe.mealLabel))}>Log portion</button><button title="Delete recipe" onClick={() => onDelete(recipe.id)}><Trash2 size={16} /></button></div></article>)}</div></section>;
+  function clearEditor() {
+    setEditingId(null);
+    setName("");
+    setMealLabel("dinner");
+    setIconName("");
+    setIngredients([]);
+  }
+  function editRecipe(recipe: Recipe) {
+    setEditingId(recipe.id);
+    setName(recipe.name);
+    setMealLabel(recipe.mealLabel || "dinner");
+    setIconName(recipe.iconName || "");
+    setIngredients(recipe.ingredients);
+  }
+  function saveRecipe() {
+    const existing = recipes.find((recipe) => recipe.id === editingId);
+    onSave({ id: existing?.id ?? crypto.randomUUID(), name: name.trim(), type: "SINGLE", mealLabel, iconName, ingredients, createdAt: existing?.createdAt ?? new Date().toISOString(), lastWrittenTagId: existing?.lastWrittenTagId ?? null });
+    clearEditor();
+  }
+  return <section className="split"><div className="panel"><div className="title-row"><h2>{editingId ? "Edit recipe" : "Create recipe"}</h2>{editingId ? <button onClick={clearEditor}>New</button> : null}</div><label>Name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Recipe name" /></label><div className="form-grid two"><label>Meal<select value={mealLabel} onChange={(event) => setMealLabel(event.target.value)}>{["breakfast", "lunch", "dinner", "snacks"].map((meal) => <option key={meal}>{meal}</option>)}</select></label><label>Icon<input value={iconName} onChange={(event) => setIconName(event.target.value)} placeholder="Optional label" /></label></div><div className="inline-form"><select value={foodId} onChange={(event) => setFoodId(event.target.value)}><option value="">Choose ingredient</option>{catalog.slice(0, 800).map((food) => <option key={food.id} value={food.id}>{food.displayName}</option>)}</select><input type="number" value={grams} min="0" onChange={(event) => setGrams(Number(event.target.value))} /><button onClick={() => foodId && setIngredients([...ingredients, { foodId, grams }])}>Add</button></div><ul className="plain-list">{ingredients.map((ingredient, index) => <li key={`${ingredient.foodId}-${index}`} className="plain-row"><span>{foodsById.get(ingredient.foodId)?.displayName ?? ingredient.foodId} - {ingredient.grams}g</span><button title="Remove ingredient" onClick={() => setIngredients(ingredients.filter((_, itemIndex) => itemIndex !== index))}><X size={16} /></button></li>)}</ul><button className="primary" disabled={!name.trim() || ingredients.length === 0} onClick={saveRecipe}>Save recipe</button></div><div className="panel"><h2>Recipe library</h2><label>Manual portion grams<input type="number" min="1" value={portion} onChange={(event) => setPortion(Number(event.target.value))} /></label>{recipes.map((recipe) => <article className="recipe-card" key={recipe.id}><span className="thumb">{recipe.iconName || recipe.name.slice(0, 2)}</span><div><h3>{recipe.name}</h3><p>{recipe.ingredients.length} ingredients | {recipe.mealLabel} | {Math.round(recipeTotals(recipe, foodsById).kcal)} kcal total</p></div><div className="button-row"><button className={favoriteRecipeIds.has(recipe.id) ? "icon-button favorite active" : "icon-button favorite"} title="Favorite recipe" onClick={() => onToggleFavorite(recipe.id)}><Star size={17} /></button><button title="Edit recipe" onClick={() => editRecipe(recipe)}><Edit3 size={16} /></button><button onClick={() => onLog(recipePortionLogs(recipe, portion, todayIso(), settings.activeIdentityId, settings.activeIdentityName, recipe.mealLabel))}>Log portion</button><button title="Delete recipe" onClick={() => onDelete(recipe.id)}><Trash2 size={16} /></button></div></article>)}</div></section>;
 }
 
 function ReviewScreen({ zeroWeightEntries, unknownEntries, foodsById, searchResults, query, setQuery, onResolveZero, onDelete, onResolveUnknown }: { zeroWeightEntries: LogEntry[]; unknownEntries: LogEntry[]; foodsById: Map<string, FoodCatalogItem>; searchResults: ReturnType<typeof searchFoods>; query: string; setQuery: (value: string) => void; onResolveZero: (entry: LogEntry, grams: number) => void; onDelete: (id: string) => void; onResolveUnknown: (entry: LogEntry, foodId: string) => void }) {
@@ -408,10 +471,14 @@ function IdentityCard({ identity, active, onSave, onDelete, onSwitch }: { identi
   return <article className="recipe-card identity-card"><div><h3>{identity.identityName}</h3><p>{identity.profileType}{active ? " | active" : ""}</p></div><div className="button-row"><button onClick={() => onSwitch(identity)}>Use</button><button onClick={() => setOpen(!open)}>Details</button><button disabled={identity.profileType === "primary"} onClick={() => { if (window.confirm(`Remove ${identity.identityName}? Historical logs will keep their saved identity name.`)) onDelete(identity.identityId); }}><Trash2 size={16} /></button></div>{open ? <div className="identity-detail"><label>Name<input value={identity.identityName} onChange={(event) => onSave({ ...identity, identityName: event.target.value })} /></label><div className="macro-edit"><label>Daily kcal<input type="number" value={identity.dailyCaloriesTarget ?? ""} onChange={(event) => onSave({ ...identity, dailyCaloriesTarget: numberOrNull(event.target.value) })} /></label><label>Protein target<input type="number" value={identity.proteinTarget ?? ""} onChange={(event) => onSave({ ...identity, proteinTarget: numberOrNull(event.target.value) })} /></label><label>Carbs target<input type="number" value={identity.carbsTarget ?? ""} onChange={(event) => onSave({ ...identity, carbsTarget: numberOrNull(event.target.value) })} /></label><label>Fat target<input type="number" value={identity.fatTarget ?? ""} onChange={(event) => onSave({ ...identity, fatTarget: numberOrNull(event.target.value) })} /></label></div><label><input type="checkbox" checked={identity.zeroWeightReviewEnabled} onChange={(event) => onSave({ ...identity, zeroWeightReviewEnabled: event.target.checked })} /> Zero-weight review</label><label><input type="checkbox" checked={identity.genericReviewEnabled} onChange={(event) => onSave({ ...identity, genericReviewEnabled: event.target.checked })} /> Generic entry review</label></div> : null}</article>;
 }
 
-function DataScreen({ settings, logs, recipes, ingredients, identities, sourceMappings, foodsById, onRestored }: { settings: AppSettings; logs: LogEntry[]; recipes: Recipe[]; ingredients: UserIngredient[]; identities: IdentityProfile[]; sourceMappings: SourceMapping[]; foodsById: Map<string, FoodCatalogItem>; onRestored: () => void }) {
+function DataScreen({ settings, logs, recipes, ingredients, identities, sourceMappings, foodPreferences, foodsById, onRestored }: { settings: AppSettings; logs: LogEntry[]; recipes: Recipe[]; ingredients: UserIngredient[]; identities: IdentityProfile[]; sourceMappings: SourceMapping[]; foodPreferences: FoodPreference[]; foodsById: Map<string, FoodCatalogItem>; onRestored: () => void }) {
   const [error, setError] = useState("");
-  const backup = () => buildBackup({ settings, logs, recipes, ingredients, identities, sourceMappings });
-  return <section className="panel settings-grid"><button onClick={() => downloadText(`axiom_web_backup_${todayIso()}.json`, JSON.stringify(backup(), null, 2), "application/json")}>Download backup JSON</button><button onClick={() => downloadText(`axiom_web_logs_${todayIso()}.csv`, logsToCsv(logs, (id) => foodsById.get(id)?.displayName ?? id), "text/csv")}>Download logs CSV</button><label>Restore backup<input type="file" accept="application/json" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; try { const parsed = decodeBackup(await file.text()); if (!window.confirm("Restore this backup and overwrite local Axiom data on this device?")) return; await replaceAllData(parsed.data); await onRestored(); setError("Backup restored with overwrite semantics."); } catch (restoreError) { setError(restoreError instanceof Error ? restoreError.message : "Restore failed."); } }} /></label>{error ? <p className="toast">{error}</p> : null}</section>;
+  const [range, setRange] = useState("all");
+  const [startDate, setStartDate] = useState(todayIso());
+  const [endDate, setEndDate] = useState(todayIso());
+  const backup = () => buildBackup({ settings, logs, recipes, ingredients, identities, sourceMappings, foodPreferences });
+  const exportLogs = filteredLogs(logs, range, startDate, endDate);
+  return <section className="panel settings-grid"><button onClick={() => downloadText(`axiom_web_backup_${todayIso()}.json`, JSON.stringify(backup(), null, 2), "application/json")}>Download backup JSON</button><div className="settings-section"><h2>Logs CSV</h2><label>Range<select value={range} onChange={(event) => setRange(event.target.value)}><option value="all">All logs</option><option value="today">Today</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="custom">Custom dates</option></select></label>{range === "custom" ? <div className="form-grid two"><label>Start<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label><label>End<input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label></div> : null}<button onClick={() => downloadText(`axiom_web_logs_${todayIso()}.csv`, logsToCsv(exportLogs, (id) => foodsById.get(id)?.displayName ?? id), "text/csv")}>Download logs CSV ({exportLogs.length})</button></div><label>Restore backup<input type="file" accept="application/json" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; try { const parsed = decodeBackup(await file.text()); if (!window.confirm("Restore this backup and overwrite local Axiom data on this device?")) return; await replaceAllData(parsed.data); await onRestored(); setError("Backup restored with overwrite semantics."); } catch (restoreError) { setError(restoreError instanceof Error ? restoreError.message : "Restore failed."); } }} /></label>{error ? <p className="toast">{error}</p> : null}</section>;
 }
 
 function HelpScreen() {
@@ -419,7 +486,7 @@ function HelpScreen() {
 }
 
 function SettingsScreen({ settings, setSettings, onReset }: { settings: AppSettings; setSettings: (settings: AppSettings) => void; onReset: () => void }) {
-  return <section className="panel settings-grid"><label>Preferred store<input value={settings.preferredStoreName ?? ""} onChange={(event) => setSettings({ ...settings, preferredStoreName: event.target.value || null })} /></label><label><input type="checkbox" checked={settings.zeroWeightReviewEnabled} onChange={(event) => setSettings({ ...settings, zeroWeightReviewEnabled: event.target.checked })} /> Zero-weight review</label><label><input type="checkbox" checked={settings.genericReviewEnabled} onChange={(event) => setSettings({ ...settings, genericReviewEnabled: event.target.checked })} /> Generic entry review</label><button className="danger" onClick={onReset}>Reset local data</button></section>;
+  return <section className="panel settings-grid"><label>Preferred store<input value={settings.preferredStoreName ?? ""} onChange={(event) => setSettings({ ...settings, preferredStoreName: event.target.value || null })} /></label><div className="settings-section"><h2>Review</h2><label><input type="checkbox" checked={settings.zeroWeightReviewEnabled} onChange={(event) => setSettings({ ...settings, zeroWeightReviewEnabled: event.target.checked })} /> Zero-weight review</label><label><input type="checkbox" checked={settings.autoZeroWeightCleanupEnabled} onChange={(event) => setSettings({ ...settings, autoZeroWeightCleanupEnabled: event.target.checked })} /> Auto-clear unchanged zero-weight entries</label><label>Zero-weight retention days<input type="number" min="1" value={settings.autoZeroWeightCleanupDays} onChange={(event) => setSettings({ ...settings, autoZeroWeightCleanupDays: Number(event.target.value) })} /></label><label><input type="checkbox" checked={settings.genericReviewEnabled} onChange={(event) => setSettings({ ...settings, genericReviewEnabled: event.target.checked })} /> Generic entry review</label><label><input type="checkbox" checked={settings.genericAutoAcceptEnabled} onChange={(event) => setSettings({ ...settings, genericAutoAcceptEnabled: event.target.checked })} /> Auto-accept unchanged generic defaults</label><label>Generic default retention days<input type="number" min="1" value={settings.genericAutoAcceptDays} onChange={(event) => setSettings({ ...settings, genericAutoAcceptDays: Number(event.target.value) })} /></label></div><div className="settings-section"><h2>People</h2><label><input type="checkbox" checked={settings.identityEnabled} onChange={(event) => setSettings({ ...settings, identityEnabled: event.target.checked })} /> Identity-aware logging</label><label><input type="checkbox" checked={settings.showDefaultIdentity} onChange={(event) => setSettings({ ...settings, showDefaultIdentity: event.target.checked })} /> Show default identity</label><label>Identity inactivity timeout minutes<input type="number" min="1" value={settings.identityInactivityTimeoutMinutes} onChange={(event) => setSettings({ ...settings, identityInactivityTimeoutMinutes: Number(event.target.value) })} /></label></div><button className="danger" onClick={onReset}>Reset local data</button></section>;
 }
 
 function ScaleScreen({ existingLogs, mappings, passiveItems, onImport }: { existingLogs: LogEntry[]; mappings: SourceMapping[]; passiveItems: AppSettings["passiveQuickLogItems"]; onImport: (entries: LogEntry[]) => void }) {
@@ -457,6 +524,10 @@ function blankIngredient(): UserIngredient {
   return { id: "", displayName: "", brandName: "", classification: "Ingredient", kcal100g: 0, protein100g: 0, carbs100g: 0, fat100g: 0, sourceKind: "user", iconName: "", updatedAt: new Date().toISOString() };
 }
 
+function blankGenericToken(): UserIngredient {
+  return { id: "", displayName: "", brandName: "Generic", classification: "generic_token", kcal100g: 0, protein100g: 0, carbs100g: 0, fat100g: 0, sourceKind: "generic", iconName: "G", updatedAt: new Date().toISOString() };
+}
+
 function blankIdentity(): IdentityProfile {
   return { identityId: "", identityName: "", profileType: "secondary", zeroWeightReviewEnabled: true, zeroWeightYellowIndicatorEnabled: true, genericReviewEnabled: true, genericWeekRefinementEnabled: true };
 }
@@ -483,8 +554,28 @@ function numberOrNull(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function filteredLogs(logs: LogEntry[], range: string, startDate: string, endDate: string): LogEntry[] {
+  if (range === "all") return logs;
+  const today = todayIso();
+  if (range === "today") return logs.filter((entry) => entry.timestamp.slice(0, 10) === today);
+  if (range === "7d" || range === "30d") {
+    const days = range === "7d" ? 7 : 30;
+    const start = new Date();
+    start.setDate(start.getDate() - (days - 1));
+    const startIso = start.toISOString().slice(0, 10);
+    return logs.filter((entry) => {
+      const date = entry.timestamp.slice(0, 10);
+      return date >= startIso && date <= today;
+    });
+  }
+  return logs.filter((entry) => {
+    const date = entry.timestamp.slice(0, 10);
+    return date >= startDate && date <= endDate;
+  });
+}
+
 function titleFor(screen: Screen): string {
-  return { today: "Today", search: "Food search", timeline: "Timeline", recipes: "Recipes", ingredients: "Ingredients", barcode: "Barcode", passive: "Quick-log", review: "Review", identities: "People", data: "Data", help: "Help", settings: "Settings", scale: "Scale sync" }[screen];
+  return { today: "Today", search: "Food search", timeline: "Timeline", recipes: "Recipes", ingredients: "Ingredients", generic: "Generic tokens", barcode: "Barcode", passive: "Quick-log", review: "Review", identities: "People", data: "Data", help: "Help", settings: "Settings", scale: "Scale sync" }[screen];
 }
 
 function todayIso(): string {

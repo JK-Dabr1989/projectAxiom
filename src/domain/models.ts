@@ -45,6 +45,13 @@ export interface FoodCatalogItem {
   headTokens: string[];
 }
 
+export interface FoodPreference {
+  foodId: string;
+  isFavorite: boolean;
+  selectionCount: number;
+  lastSelectedAt?: string | null;
+}
+
 export interface UserIngredient {
   id: string;
   displayName: string;
@@ -151,6 +158,13 @@ export interface AppSettings {
   genericReviewEnabled: boolean;
   genericWeekRefinementEnabled: boolean;
   genericYellowIndicatorEnabled: boolean;
+  autoZeroWeightCleanupEnabled: boolean;
+  autoZeroWeightCleanupDays: number;
+  genericAutoAcceptEnabled: boolean;
+  genericAutoAcceptDays: number;
+  identityEnabled: boolean;
+  showDefaultIdentity: boolean;
+  identityInactivityTimeoutMinutes: number;
   fatButtonItemId: string;
   fatButtonItemName: string;
   fatButtonFixed: boolean;
@@ -175,6 +189,7 @@ export interface AxiomBackup {
     ingredients: UserIngredient[];
     identities: IdentityProfile[];
     sourceMappings: SourceMapping[];
+    foodPreferences: FoodPreference[];
   };
 }
 

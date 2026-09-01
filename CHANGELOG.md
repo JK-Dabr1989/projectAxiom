@@ -32,3 +32,9 @@
 - Configured `/app/` Vite/PWA paths, artifact leak checks, and a private-source GitHub Actions deployment workflow that publishes only built runtime files to `projectAxiom/app/`.
 - Replaced the permanent multi-button navigation grid with a compact top app bar, persistent five-item bottom navigation, and grouped More sheet for secondary destinations.
 - Scoped the hardware-unavailable banner to the Scale screen so unrelated workflows no longer appear unfinished.
+- Added IndexedDB-backed food preferences with favorite state, recents, and selection counts.
+- Added favorites and recents to food search, plus favorite toggles and per-100g detail in the selected food panel.
+- Added recipe editing, meal/icon fields, removable recipe ingredients, and recipe favorites.
+- Added a generic token library/editor for local generic nutrition entries.
+- Added ranged logs CSV export for all/today/last 7 days/last 30 days/custom dates.
+- Added Android-style review and people settings for cleanup, generic defaults, identity display, and inactivity timeout.
