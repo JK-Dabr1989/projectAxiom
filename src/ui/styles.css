@@ -369,6 +369,34 @@ small {
   margin-top: 1rem;
 }
 
+.button-row.compact {
+  margin-top: 0;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  padding: calc(4.7rem + env(safe-area-inset-top)) 1rem calc(5.4rem + env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.log-modal {
+  width: min(100%, 620px);
+  max-height: min(78vh, 720px);
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.52);
+}
+
+.meal-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
 .inline-form {
   display: grid;
   grid-template-columns: 1fr 90px auto;
@@ -656,6 +684,19 @@ small {
   .log-actions {
     grid-column: 1 / -1;
     justify-content: start;
+  }
+
+  .modal-backdrop {
+    align-items: end;
+    padding: calc(4.2rem + env(safe-area-inset-top)) 0.75rem calc(5rem + env(safe-area-inset-bottom));
+  }
+
+  .log-modal {
+    max-height: 74vh;
+  }
+
+  .meal-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

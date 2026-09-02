@@ -38,3 +38,4 @@
 - Added a generic token library/editor for local generic nutrition entries.
 - Added ranged logs CSV export for all/today/last 7 days/last 30 days/custom dates.
 - Added Android-style review and people settings for cleanup, generic defaults, identity display, and inactivity timeout.
+- Changed food selection during manual logging from a side panel to an overlay dialog so the logging action is visually explicit.
