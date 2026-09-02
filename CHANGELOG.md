@@ -39,3 +39,8 @@
 - Added ranged logs CSV export for all/today/last 7 days/last 30 days/custom dates.
 - Added Android-style review and people settings for cleanup, generic defaults, identity display, and inactivity timeout.
 - Changed food selection during manual logging from a side panel to an overlay dialog so the logging action is visually explicit.
+- Added a central Write Tokens destination for preparing all Axiom NFC token types from one workflow.
+- Added a mixed token write queue for food/ingredient, recipe, identity, quick-log shortcut, and generic token definitions.
+- Routed token actions from food search, ingredients, recipes, people, quick-log, and generic token screens into Write Tokens instead of separate writer flows.
+- Added staged scale-writing session UI with queue progress, skip/retry/cancel controls, and product-facing scale connection messaging.
+- Added an SS1 token payload preparation layer and future `TokenWriter` hardware boundary without implementing physical NFC writing.

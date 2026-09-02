@@ -30,6 +30,26 @@ Still intentionally constrained or incomplete:
 - Passive quick-log setup still supports food/ingredient shortcuts only; recipe/custom/composite passive item builders remain smaller than Android.
 - Hardware communication, NFC, and Bluetooth/scale writing remain out of scope for this parity pass.
 
+### 2026-09-02 Central Write Tokens Architecture
+
+Implemented:
+
+- Added `Write Tokens` as the canonical token-writing destination in the More menu under Device.
+- Added a central mixed token queue for ingredient/food, recipe, identity/person, quick-log shortcut, and generic token entries.
+- Added queue management for add, remove, reorder, clear, count, and start-writing state.
+- Added a staged writing-session UI with current token, progress count, retry, skip, cancel, and back-to-queue controls.
+- Routed token actions from food search, ingredient library, recipe library, people, quick-log, and generic token library into the same Write Tokens queue.
+- Added an SS1 token payload preparation layer that converts domain entities into prepared token definitions before they enter the queue.
+- Added a future `TokenWriter` boundary so physical scale token writing can plug into the session state machine without exposing low-level scale details to React UI.
+
+Deferred:
+
+- Physical scale connection for token writing.
+- Scale token write mode commands.
+- NFC writing and verification through the scale.
+- Browser Web NFC.
+- Firmware/PN532 command handling.
+
 ### In-App Parity Summary
 
 | Area | Android behaviour found | Web status | Gap priority |
@@ -45,6 +65,7 @@ Still intentionally constrained or incomplete:
 | Recipes | Library, detail screen, favourite, edit existing recipe, log portion, add ingredients through search overlay | Create/edit, meal/icon fields, library, favourite, delete, and log portion implemented; full detail route remains lighter | P2 |
 | Ingredients | Library modes, favourites/recents, detail screen, manual/OFF creation, edit/delete with in-use blocking | Local custom ingredient create/edit/delete blocking plus barcode/OFF onboarding | P1 |
 | Barcode/OFF | ZXing scan, manual barcode lookup, OFF prefill and confirmation | Manual barcode, optional browser BarcodeDetector camera scan, OFF prefill and confirmation | Near parity, browser-dependent |
+| Central token writing | Android exposes tag write prompts from multiple domains | Web has one canonical Write Tokens screen with mixed queue and staged session; physical writing deferred | App-side parity |
 | Zero-weight review | Dedicated review screen/settings, correction and cleanup rules | Review screen supports correct/keep/remove | P2 |
 | Unknown/generic review | Unknown assignment, generic subtype options, entry/week refinement, rewrite warnings | Basic unknown mapping and saved source mapping; no week refinement or rewrite warning | P1 |
 | Generic tokens | Library, create/update nutrition, delete with in-use blocking, accepted defaults | Generic token library/editor implemented; accepted defaults and refinement still pending | P2 |
@@ -181,7 +202,7 @@ Business rules mirrored through the current Web build:
 | Web Bluetooth adapter | Deferred - requires BLE firmware | Not implemented |
 | Android NFC writing | Deferred - NFC | Not implemented |
 | Web NFC | Deferred - NFC | Not implemented |
-| Scale-side PN532 tag writing | Deferred - NFC | Not implemented |
+| Scale-side PN532 tag writing | Deferred - NFC | Not implemented; Web now has Write Tokens queue/session architecture only |
 | Android-specific developer export tooling | Not applicable to Web validation | Not implemented |
 
 ## Hardware-Dependent Parity
@@ -199,6 +220,7 @@ Physical scale communication is not enabled in this Web validation build.
 
 Implemented:
 
+- Central Write Tokens workflow with mixed queue, staged session UI, and unified token actions from the app's token-capable screens.
 - Local ingredient library/editor with per-100g nutrition fields.
 - Custom ingredients included in search, recipes, manual logging, timeline display, and exports.
 - Zero-weight review with correct/keep/remove actions.

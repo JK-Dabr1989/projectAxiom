@@ -472,6 +472,96 @@ small {
   padding-top: 1rem;
 }
 
+.write-tokens h1 {
+  margin-bottom: 0.25rem;
+}
+
+.write-hero p {
+  max-width: 620px;
+  margin-bottom: 0;
+  color: #c9d1d9;
+}
+
+.token-picker,
+.queue-panel,
+.session-panel,
+.completion-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.segmented button {
+  min-height: 44px;
+  padding: 0.55rem 0.45rem;
+}
+
+.segmented button.active {
+  border-color: rgba(216, 168, 78, 0.65);
+  background: #2a2216;
+  color: #ffd57f;
+}
+
+.queue-panel .start-writing {
+  width: 100%;
+}
+
+.queue-row {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid #26313b;
+  border-radius: 8px;
+  padding: 0.7rem;
+  background: #10161d;
+}
+
+.queue-row .log-actions button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.progress-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #26313b;
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #d8a84e;
+}
+
+.current-token {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.current-token .thumb {
+  width: 54px;
+  height: 54px;
+}
+
+.danger-pill {
+  border-color: #8e3a3a;
+  background: #2a1111;
+  color: #ffc7c7;
+}
+
 .onboarding {
   min-height: 100vh;
   display: grid;
@@ -684,6 +774,14 @@ small {
   .log-actions {
     grid-column: 1 / -1;
     justify-content: start;
+  }
+
+  .segmented {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .queue-row {
+    grid-template-columns: 42px 1fr;
   }
 
   .modal-backdrop {
