@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { FoodCatalogItem, IdentityProfile, PassiveQuickLogItem, Recipe } from "../src/domain/models";
 import {
+  TOKEN_CATEGORY_METADATA,
   WRITE_TOKENS_SCREEN_ID,
   addTokenToQueue,
   currentSessionItem,
   failCurrentToken,
   foodTokenDefinition,
   identityTokenDefinition,
+  isIntentionalWriterTokenType,
   markCurrentWritten,
   moveQueueItem,
   recipeTokenDefinition,
@@ -15,8 +17,10 @@ import {
   shortcutTokenDefinition,
   skipCurrentToken,
   startWritingSession,
+  tokenPreviewSummary,
   type TokenWriteQueueItem,
 } from "../src/domain/tokenWriting";
+import { searchFoods } from "../src/data/foodService";
 
 describe("token writing domain", () => {
   it("adds mixed token types to one queue", () => {
@@ -72,6 +76,35 @@ describe("token writing domain", () => {
 
   it("uses Write Tokens as the canonical token action target", () => {
     expect(WRITE_TOKENS_SCREEN_ID).toBe("writeTokens");
+  });
+
+  it("exposes only intentional user-facing writer categories", () => {
+    expect(TOKEN_CATEGORY_METADATA.map((item) => item.tokenType)).toEqual(["ingredient", "recipe", "generic", "identity", "shortcut"]);
+    expect(TOKEN_CATEGORY_METADATA.map((item) => item.emptyAction)).toEqual(["Create custom ingredient", "Create recipe", "Create Generic Token", "Add person", "Create Quick Log"]);
+    expect(isIntentionalWriterTokenType("undefined")).toBe(false);
+  });
+
+  it("searches a combined bundled and custom food list for food tokens", () => {
+    const bundled = food("fd_chicken", "Chicken breast");
+    const custom = food("custom:protein_oats", "Protein oats");
+
+    expect(searchFoods([bundled, custom], "protein")[0]?.food.id).toBe("custom:protein_oats");
+    expect(searchFoods([bundled, custom], "chicken")[0]?.food.id).toBe("fd_chicken");
+  });
+
+  it("keeps an existing mixed queue when a created entity returns to the writer", () => {
+    const existing = addTokenToQueue(addTokenToQueue([], foodTokenDefinition(food("fd_chicken", "Chicken")), "food"), identityTokenDefinition(identity), "identity");
+    const createdRecipe = { ...recipe, id: "recipe_new", name: "New stew" };
+    const next = addTokenToQueue(existing, recipeTokenDefinition(createdRecipe, foodsById), "created");
+
+    expect(next.map((item) => item.id)).toEqual(["food", "identity", "created"]);
+    expect(next[2].displayLabel).toBe("New stew");
+  });
+
+  it("previews token type meaning without raw protocol labels", () => {
+    expect(tokenPreviewSummary(foodTokenDefinition(food("generic:03", "Generic 03")))).toBe("Reusable generic food token");
+    expect(tokenPreviewSummary(recipeTokenDefinition(recipe, foodsById))).toBe("Single recipe");
+    expect(tokenPreviewSummary(shortcutTokenDefinition(shortcut))).toBe("Saved food quick-log");
   });
 });
 

@@ -9,7 +9,7 @@ import { lookupOpenFoodFacts, normalizeBarcode, type OpenFoodFactsDraft } from "
 import { registerServiceWorker } from "../pwa";
 import { applyPassiveShortcutConfig, applySourceMappings, isUnknownUnresolved, isZeroWeightUnresolved, resolveUnknownEntry, resolveZeroWeight, sourceKeyForEntry } from "../domain/review";
 import { recipePortionLogs } from "../domain/recipes";
-import { WRITE_TOKENS_SCREEN_ID, addTokenToQueue, currentSessionItem, failCurrentToken, foodTokenDefinition, identityTokenDefinition, markCurrentWritten, markCurrentWriting, moveQueueItem, recipeTokenDefinition, removeQueueItem, retryCurrentToken, shortcutTokenDefinition, skipCurrentToken, startWritingSession, type TokenDefinition, type TokenWriteQueueItem, type TokenWritingSession } from "../domain/tokenWriting";
+import { TOKEN_CATEGORY_METADATA, WRITE_TOKENS_SCREEN_ID, addTokenToQueue, currentSessionItem, failCurrentToken, foodTokenDefinition, identityTokenDefinition, markCurrentWritten, markCurrentWriting, moveQueueItem, recipeTokenDefinition, removeQueueItem, retryCurrentToken, shortcutTokenDefinition, skipCurrentToken, startWritingSession, tokenCategoryMetadata, tokenPreviewSummary, type TokenDefinition, type TokenDefinitionType, type TokenWriteQueueItem, type TokenWritingSession } from "../domain/tokenWriting";
 import {
   deleteIngredient,
   deleteIdentity,
@@ -234,7 +234,7 @@ export function App() {
         {screen === "help" && <HelpScreen />}
         {screen === "settings" && <SettingsScreen settings={settings} setSettings={setSettings} onReset={async () => { if (!window.confirm("Reset local Axiom data on this device? Export a backup first if you want to keep it.")) return; await resetLocalData(); await loadAll(); setMessage("Local app data reset"); }} />}
         {screen === "scale" && <ScaleScreen existingLogs={logs} mappings={sourceMappings} passiveItems={settings.passiveQuickLogItems} onImport={async (entries) => { for (const entry of entries) await upsertLog(entry); await loadAll(); }} />}
-        {screen === WRITE_TOKENS_SCREEN_ID && <WriteTokensScreen catalog={catalog} foodsById={foodsById} recipes={recipes} identities={identities} quickLogItems={settings.passiveQuickLogItems} queue={tokenQueue} setQueue={setTokenQueue} onAddToken={(definition) => setTokenQueue((queue) => addTokenToQueue(queue, definition))} />}
+        {screen === WRITE_TOKENS_SCREEN_ID && <WriteTokensScreen catalog={catalog} foodsById={foodsById} recipes={recipes} identities={identities} settings={settings} quickLogItems={settings.passiveQuickLogItems} queue={tokenQueue} setQueue={setTokenQueue} onAddToken={(definition) => setTokenQueue((queue) => addTokenToQueue(queue, definition))} onSaveIngredient={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); }} onSaveRecipe={async (recipe) => { await upsertRecipe(recipe); await loadAll(); }} onSaveIdentity={async (identity) => { await upsertIdentity(identity); await loadAll(); }} onSaveQuickLog={async (nextSettings, ingredient) => { if (ingredient) await upsertIngredient(ingredient); await setSettings(nextSettings); }} />}
       </main>
       <BottomNav currentScreen={screen} moreOpen={moreOpen} onNavigate={navigate} onMore={() => setMoreOpen((open) => !open)} />
       <MoreSheet currentScreen={screen} open={moreOpen} onClose={() => setMoreOpen(false)} onNavigate={navigate} />
@@ -297,32 +297,38 @@ function TodayScreen({ groups, totals, reviewCount, onLog, onReview }: { groups:
   return <section className="stack"><div className="metrics"><Metric label="Calories" value={Math.round(totals.kcal).toString()} unit="kcal" /><Metric label="Protein" value={totals.protein.toFixed(1)} unit="g" /><Metric label="Carbs" value={totals.carbs.toFixed(1)} unit="g" /><Metric label="Fat" value={totals.fat.toFixed(1)} unit="g" /></div><div className="button-row"><button className="primary" onClick={onLog}>Log food</button><button onClick={onReview}>Review {reviewCount}</button></div><MealGroups groups={groups} editable={false} /></section>;
 }
 
-function WriteTokensScreen({ catalog, foodsById, recipes, identities, quickLogItems, queue, setQueue, onAddToken }: { catalog: FoodCatalogItem[]; foodsById: Map<string, FoodCatalogItem>; recipes: Recipe[]; identities: IdentityProfile[]; quickLogItems: AppSettings["passiveQuickLogItems"]; queue: TokenWriteQueueItem[]; setQueue: (queue: TokenWriteQueueItem[]) => void; onAddToken: (definition: TokenDefinition) => void }) {
-  const [category, setCategory] = useState<TokenDefinition["tokenType"]>("ingredient");
+function WriteTokensScreen({ catalog, foodsById, recipes, identities, settings, quickLogItems, queue, setQueue, onAddToken, onSaveIngredient, onSaveRecipe, onSaveIdentity, onSaveQuickLog }: { catalog: FoodCatalogItem[]; foodsById: Map<string, FoodCatalogItem>; recipes: Recipe[]; identities: IdentityProfile[]; settings: AppSettings; quickLogItems: AppSettings["passiveQuickLogItems"]; queue: TokenWriteQueueItem[]; setQueue: (queue: TokenWriteQueueItem[]) => void; onAddToken: (definition: TokenDefinition) => void; onSaveIngredient: (ingredient: UserIngredient) => Promise<void> | void; onSaveRecipe: (recipe: Recipe) => Promise<void> | void; onSaveIdentity: (identity: IdentityProfile) => Promise<void> | void; onSaveQuickLog: (settings: AppSettings, ingredient?: UserIngredient) => Promise<void> | void }) {
+  const [category, setCategory] = useState<TokenDefinitionType | null>(null);
   const [query, setQuery] = useState("");
-  const [recipeId, setRecipeId] = useState("");
-  const [identityId, setIdentityId] = useState("");
-  const [shortcutId, setShortcutId] = useState("");
+  const [recipeQuery, setRecipeQuery] = useState("");
+  const [preview, setPreview] = useState<TokenDefinition | null>(null);
+  const [creationMode, setCreationMode] = useState<TokenDefinitionType | null>(null);
   const [session, setSession] = useState<TokenWritingSession | null>(null);
   const [writerMessage, setWriterMessage] = useState(new UnavailableTokenWriter().getStatus().message);
   const genericTokens = catalog.filter((food) => food.id.startsWith("generic:"));
-  const ingredientResults = searchFoods(category === "generic" ? genericTokens : catalog, query);
-  const selectedRecipe = recipes.find((recipe) => recipe.id === recipeId);
-  const selectedIdentity = identities.find((identity) => identity.identityId === identityId);
-  const selectedShortcut = quickLogItems.find((item) => item.itemId === shortcutId);
+  const foodResults = searchFoods(category === "generic" ? genericTokens : catalog, query);
+  const recipeResults = recipes.filter((recipe) => recipe.name.toLowerCase().includes(recipeQuery.trim().toLowerCase()));
   const current = session ? currentSessionItem(session) : null;
   const writtenCount = (session?.items ?? queue).filter((item) => item.status === "written").length;
-  function addSelectedRecipe() {
-    if (!selectedRecipe) return;
-    onAddToken(recipeTokenDefinition(selectedRecipe, foodsById));
+  const meta = category ? tokenCategoryMetadata(category) : null;
+  function chooseCategory(next: TokenDefinitionType) {
+    setCategory(next);
+    setPreview(null);
+    setCreationMode(null);
+    setQuery("");
+    setRecipeQuery("");
   }
-  function addSelectedIdentity() {
-    if (!selectedIdentity) return;
-    onAddToken(identityTokenDefinition(selectedIdentity));
+  function previewEntity(createDefinition: () => TokenDefinition) {
+    try {
+      setPreview(createDefinition());
+    } catch (error) {
+      setWriterMessage(error instanceof Error ? error.message : "Token could not be prepared");
+    }
   }
-  function addSelectedShortcut() {
-    if (!selectedShortcut) return;
-    onAddToken(shortcutTokenDefinition(selectedShortcut));
+  function addPreview() {
+    if (!preview) return;
+    onAddToken(preview);
+    setPreview(null);
   }
   async function connectScale() {
     try {
@@ -331,13 +337,91 @@ function WriteTokensScreen({ catalog, foodsById, recipes, identities, quickLogIt
       setWriterMessage(error instanceof Error ? error.message : new UnavailableTokenWriter().getStatus().message);
     }
   }
+  async function saveCreatedIngredient(ingredient: UserIngredient) {
+    await onSaveIngredient(ingredient);
+    setCreationMode(null);
+    chooseCategory("ingredient");
+    setPreview(foodTokenDefinition(ingredientToCatalogItem(ingredient)));
+  }
+  async function saveCreatedGeneric(ingredient: UserIngredient) {
+    await onSaveIngredient(ingredient);
+    setCreationMode(null);
+    chooseCategory("generic");
+    setPreview(foodTokenDefinition(ingredientToCatalogItem(ingredient)));
+  }
+  async function saveCreatedRecipe(recipe: Recipe) {
+    await onSaveRecipe(recipe);
+    setCreationMode(null);
+    chooseCategory("recipe");
+    setPreview(recipeTokenDefinition(recipe, foodsById));
+  }
+  async function saveCreatedIdentity(identity: IdentityProfile) {
+    await onSaveIdentity(identity);
+    setCreationMode(null);
+    chooseCategory("identity");
+    setPreview(identityTokenDefinition(identity));
+  }
+  async function saveCreatedQuickLog(nextSettings: AppSettings, item: AppSettings["passiveQuickLogItems"][number], ingredient?: UserIngredient) {
+    await onSaveQuickLog(nextSettings, ingredient);
+    setCreationMode(null);
+    chooseCategory("shortcut");
+    setPreview(shortcutTokenDefinition(item));
+  }
   if (session?.mode === "complete") {
     return <section className="stack write-tokens"><div className="panel completion-panel"><p className="eyebrow">Write Tokens</p><h1>{writtenCount} tokens written</h1><div className="result-list">{session.items.map((item) => <article className="queue-row" key={item.id}><span className="thumb">{tokenTypeLabel(item.tokenType).slice(0, 2)}</span><div><strong>{item.displayLabel}</strong><small>{tokenTypeLabel(item.tokenType)} | {item.status}</small></div></article>)}</div><div className="button-row"><button className="primary" onClick={() => { setQueue([]); setSession(null); }}>Done</button><button onClick={() => { setQueue([]); setSession(null); }}>Write more tokens</button></div></div></section>;
   }
   if (session?.mode === "writing" && current) {
     return <section className="stack write-tokens"><div className="panel session-panel"><p className="eyebrow">Write Tokens</p><h1>{session.currentIndex + 1} of {session.items.length}</h1><div className="progress-track"><span style={{ width: `${Math.max(4, ((session.currentIndex + 1) / session.items.length) * 100)}%` }} /></div><div className="current-token"><span className="thumb">{tokenTypeLabel(current.tokenType).slice(0, 2)}</span><div><p className="eyebrow">Current token</p><h2>{current.displayLabel}</h2><p className="muted">{tokenTypeLabel(current.tokenType)}</p></div></div><div className={current.status === "failed" ? "status-pill danger-pill" : "status-pill"}>{current.status === "failed" ? current.error : writerMessage}</div><p className="muted">{current.status === "failed" ? "Retry this token or skip it before continuing." : "Place a blank NFC token on the scale when token write mode is available."}</p><div className="button-row"><button onClick={() => setSession(null)}>Back to queue</button><button onClick={() => setSession(null)}>Cancel session</button><button onClick={() => setSession(skipCurrentToken(session))}><SkipForward size={16} /> Skip current token</button>{current.status === "failed" ? <button onClick={() => setSession(retryCurrentToken(session))}><RefreshCcw size={16} /> Retry failed token</button> : null}{import.meta.env.DEV ? <><button onClick={() => setSession(markCurrentWriting(session))}>Dev writing</button><button onClick={() => setSession(markCurrentWritten(session))}>Dev written</button><button onClick={() => setSession(failCurrentToken(session, "Development simulated write failure."))}>Dev fail</button></> : null}</div></div></section>;
   }
-  return <section className="stack write-tokens"><div className="panel write-hero"><p className="eyebrow">Write Tokens</p><h1>Write Tokens</h1><p>Create Axiom NFC tokens using the NFC reader/writer built into your scale.</p></div><div className="split"><div className="panel token-picker"><h2>Step 1 - Choose tokens</h2><div className="segmented">{(["ingredient", "recipe", "identity", "shortcut", "generic"] as const).map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{tokenTypeLabel(item)}</button>)}</div>{(category === "ingredient" || category === "generic") ? <div className="stack"><input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={category === "generic" ? "Search generic tokens" : "Search foods and ingredients"} /><div className="result-list">{ingredientResults.map(({ food }) => <button key={food.id} className="result-row" onClick={() => onAddToken(foodTokenDefinition(food))}><span className="thumb">{food.thumbnailLabel || food.displayName.slice(0, 2)}</span><span><strong>{food.displayName}</strong><small>{category === "generic" ? "Generic" : [food.brandName, food.storeName, food.stateCandidate].filter(Boolean).join(" | ")}</small></span><em>Add</em></button>)}</div></div> : null}{category === "recipe" ? <div className="stack"><label>Recipe<select value={recipeId} onChange={(event) => setRecipeId(event.target.value)}><option value="">Choose recipe</option>{recipes.map((recipe) => <option key={recipe.id} value={recipe.id}>{recipe.name}</option>)}</select></label><button className="primary" disabled={!selectedRecipe} onClick={addSelectedRecipe}>Add to queue</button></div> : null}{category === "identity" ? <div className="stack"><label>Person<select value={identityId} onChange={(event) => setIdentityId(event.target.value)}><option value="">Choose person</option>{identities.map((identity) => <option key={identity.identityId} value={identity.identityId}>{identity.identityName}</option>)}</select></label><button className="primary" disabled={!selectedIdentity} onClick={addSelectedIdentity}>Add to queue</button></div> : null}{category === "shortcut" ? <div className="stack"><label>Quick-log<select value={shortcutId} onChange={(event) => setShortcutId(event.target.value)}><option value="">Choose quick-log shortcut</option>{quickLogItems.map((item) => <option key={item.itemId} value={item.itemId}>{item.itemName}</option>)}</select></label><button className="primary" disabled={!selectedShortcut} onClick={addSelectedShortcut}>Add to queue</button></div> : null}</div><div className="panel queue-panel"><div className="title-row"><div><h2>Queue</h2><p className="muted">{queue.length} token{queue.length === 1 ? "" : "s"}</p></div><button disabled={queue.length === 0} onClick={() => setQueue([])}>Clear queue</button></div>{queue.length === 0 ? <div className="empty">Add ingredients, recipes, people, quick-log shortcuts, or generic tokens to build a mixed writing queue.</div> : <div className="result-list">{queue.map((item, index) => <article className="queue-row" key={item.id}><span className="thumb">{tokenTypeLabel(item.tokenType).slice(0, 2)}</span><div><strong>{item.displayLabel}</strong><small>{tokenTypeLabel(item.tokenType)} | {item.status}</small></div><div className="log-actions"><button title="Move up" disabled={index === 0} onClick={() => setQueue(moveQueueItem(queue, item.id, -1))}><ArrowUp size={16} /></button><button title="Move down" disabled={index === queue.length - 1} onClick={() => setQueue(moveQueueItem(queue, item.id, 1))}><ArrowDown size={16} /></button><button title="Remove token" onClick={() => setQueue(removeQueueItem(queue, item.id))}><Trash2 size={16} /></button></div></article>)}</div>}<div className="settings-section"><h2>Scale connection</h2><div className="status-pill">Not connected</div><p className="muted">{writerMessage}</p><div className="button-row"><button onClick={connectScale}>Connect scale</button><button disabled>Enable token write mode on AxiomScale</button></div></div><button className="primary start-writing" disabled={queue.length === 0} onClick={() => setSession(startWritingSession(queue))}><Play size={16} /> Start writing</button></div></div></section>;
+  return <section className="stack write-tokens"><div className="panel write-hero"><p className="eyebrow">Write Tokens</p><h1>Write Tokens</h1><p>Create Axiom NFC tokens using the NFC reader/writer built into your scale.</p></div><div className="split"><div className="panel token-picker"><h2>What do you want to write?</h2><div className="token-choice-grid">{TOKEN_CATEGORY_METADATA.map((item) => <button key={item.tokenType} className={category === item.tokenType ? "token-choice active" : "token-choice"} onClick={() => chooseCategory(item.tokenType)}><span className="eyebrow">{item.eyebrow}</span><strong>{item.label}</strong><small>{item.description}</small></button>)}</div>{meta ? <div className="token-selector"><div className="title-row"><div><p className="eyebrow">{meta.eyebrow}</p><h2>{meta.label}</h2></div><button onClick={() => setCreationMode(category)}>{meta.emptyAction}</button></div>{creationMode === "ingredient" ? <IngredientForm ingredient={null} onSave={saveCreatedIngredient} /> : null}{creationMode === "generic" ? <GenericTokenForm token={null} onSave={saveCreatedGeneric} /> : null}{creationMode === "recipe" ? <RecipeCreator catalog={catalog} foodsById={foodsById} onSave={saveCreatedRecipe} /> : null}{creationMode === "identity" ? <IdentityCreator onSave={saveCreatedIdentity} /> : null}{creationMode === "shortcut" ? <QuickLogCreator settings={settings} identities={identities} catalog={catalog} onSave={saveCreatedQuickLog} /> : null}{!creationMode && (category === "ingredient" || category === "generic") ? <div className="stack"><input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={category === "generic" ? "Search Generic Tokens" : "Search foods and ingredients"} /><div className="result-list">{foodResults.map(({ food, score }) => <button key={food.id} className="result-row" onClick={() => previewEntity(() => foodTokenDefinition(food))}><span className="thumb">{food.thumbnailLabel || food.displayName.slice(0, 2)}</span><span><strong>{food.displayName}</strong><small>{category === "generic" ? "Reusable generic food token" : [food.brandName, food.storeName, food.stateCandidate].filter(Boolean).join(" | ")}</small></span><em>{score}</em></button>)}</div>{foodResults.length === 0 ? <EmptyTokenState meta={meta} onCreate={() => setCreationMode(category)} /> : null}</div> : null}{!creationMode && category === "recipe" ? <div className="stack"><input className="search-input" value={recipeQuery} onChange={(event) => setRecipeQuery(event.target.value)} placeholder="Search recipes" />{recipeResults.length === 0 ? <EmptyTokenState meta={meta} onCreate={() => setCreationMode("recipe")} /> : <div className="result-list">{recipeResults.map((recipe) => <button key={recipe.id} className="result-row" onClick={() => previewEntity(() => recipeTokenDefinition(recipe, foodsById))}><span className="thumb">{recipe.iconName || recipe.name.slice(0, 2)}</span><span><strong>{recipe.name}</strong><small>{recipe.ingredients.length} ingredients | {recipe.mealLabel} | Single recipe</small></span><em>Choose</em></button>)}</div>}</div> : null}{!creationMode && category === "identity" ? <div className="stack">{identities.length === 0 ? <EmptyTokenState meta={meta} onCreate={() => setCreationMode("identity")} /> : <div className="result-list">{identities.map((identity) => <button key={identity.identityId} className="result-row" onClick={() => previewEntity(() => identityTokenDefinition(identity))}><span className="thumb">{identity.identityName.slice(0, 2)}</span><span><strong>{identity.identityName}</strong><small>{identity.profileType === "primary" ? "Primary person" : "Household person"}</small></span><em>Choose</em></button>)}</div>}</div> : null}{!creationMode && category === "shortcut" ? <div className="stack">{quickLogItems.length === 0 ? <EmptyTokenState meta={meta} onCreate={() => setCreationMode("shortcut")} /> : <div className="result-list">{quickLogItems.map((item) => <button key={`${item.identityId}-${item.itemId}`} className="result-row" onClick={() => previewEntity(() => shortcutTokenDefinition(item))}><span className="thumb">{item.itemName.slice(0, 2)}</span><span><strong>{item.itemName}</strong><small>{item.defaultGrams}g | {item.identityName}</small></span><em>Choose</em></button>)}</div>}</div> : null}{preview ? <TokenPreview definition={preview} onAdd={addPreview} onCancel={() => setPreview(null)} /> : null}</div> : <p className="muted">Choose a token type to select an existing item or create one without leaving your queue.</p>}</div><QueuePanel queue={queue} setQueue={setQueue} writerMessage={writerMessage} connectScale={connectScale} startSession={() => setSession(startWritingSession(queue))} /></div></section>;
+}
+
+function EmptyTokenState({ meta, onCreate }: { meta: ReturnType<typeof tokenCategoryMetadata>; onCreate: () => void }) {
+  return <div className="empty token-empty"><strong>{meta.emptyTitle}</strong><span>Make one here and return to this Write Tokens queue.</span><button className="primary" onClick={onCreate}>{meta.emptyAction}</button></div>;
+}
+
+function TokenPreview({ definition, onAdd, onCancel }: { definition: TokenDefinition; onAdd: () => void; onCancel: () => void }) {
+  return <article className="token-preview"><p className="eyebrow">Token preview</p><h3>{definition.displayLabel}</h3><p>{tokenTypeLabel(definition.tokenType)} token</p><p className="muted">{tokenPreviewSummary(definition)}</p>{import.meta.env.DEV ? <details><summary>Payload</summary><code>{definition.payload}</code></details> : null}<div className="button-row"><button className="primary" onClick={onAdd}>Add to queue</button><button onClick={onCancel}>Choose another</button></div></article>;
+}
+
+function QueuePanel({ queue, setQueue, writerMessage, connectScale, startSession }: { queue: TokenWriteQueueItem[]; setQueue: (queue: TokenWriteQueueItem[]) => void; writerMessage: string; connectScale: () => void; startSession: () => void }) {
+  return <div className="panel queue-panel"><div className="title-row"><div><h2>Queue</h2><p className="muted">{queue.length} token{queue.length === 1 ? "" : "s"}</p></div><button disabled={queue.length === 0} onClick={() => setQueue([])}>Clear queue</button></div>{queue.length === 0 ? <div className="empty">Add foods, recipes, people, quick-log shortcuts, or generic tokens to build a mixed writing queue.</div> : <div className="result-list">{queue.map((item, index) => <article className="queue-row" key={item.id}><span className="thumb">{tokenTypeLabel(item.tokenType).slice(0, 2)}</span><div><strong>{item.displayLabel}</strong><small>{tokenTypeLabel(item.tokenType)} | {item.status}</small></div><div className="log-actions"><button title="Move up" disabled={index === 0} onClick={() => setQueue(moveQueueItem(queue, item.id, -1))}><ArrowUp size={16} /></button><button title="Move down" disabled={index === queue.length - 1} onClick={() => setQueue(moveQueueItem(queue, item.id, 1))}><ArrowDown size={16} /></button><button title="Remove token" onClick={() => setQueue(removeQueueItem(queue, item.id))}><Trash2 size={16} /></button></div></article>)}</div>}<div className="settings-section ready-write"><h2>Ready to write</h2><p className="muted">{queue.length} token{queue.length === 1 ? "" : "s"} queued</p><ol><li>Connect your AxiomScale.</li><li>Put the scale into Token Write mode.</li><li>Place the requested blank token on the NFC area.</li><li>Wait for confirmation.</li><li>Replace it with the next token.</li></ol><div className="status-pill">Not connected</div><p className="muted">{writerMessage}</p><div className="button-row"><button onClick={connectScale}>Connect scale</button><button disabled>Enable token write mode on AxiomScale</button></div></div><button className="primary start-writing" disabled={queue.length === 0} onClick={startSession}><Play size={16} /> Start writing</button></div>;
+}
+
+function RecipeCreator({ catalog, foodsById, onSave }: { catalog: FoodCatalogItem[]; foodsById: Map<string, FoodCatalogItem>; onSave: (recipe: Recipe) => void }) {
+  const [name, setName] = useState("");
+  const [mealLabel, setMealLabel] = useState("dinner");
+  const [iconName, setIconName] = useState("");
+  const [foodId, setFoodId] = useState("");
+  const [grams, setGrams] = useState(100);
+  const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
+  function save() {
+    onSave({ id: crypto.randomUUID(), name: name.trim(), type: "SINGLE", mealLabel, iconName, ingredients, createdAt: new Date().toISOString(), lastWrittenTagId: null });
+  }
+  return <div className="panel inline-creator"><h2>Create recipe</h2><label>Name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Recipe name" /></label><div className="form-grid two"><label>Meal<select value={mealLabel} onChange={(event) => setMealLabel(event.target.value)}>{["breakfast", "lunch", "dinner", "snacks"].map((meal) => <option key={meal}>{meal}</option>)}</select></label><label>Icon<input value={iconName} onChange={(event) => setIconName(event.target.value)} placeholder="Optional label" /></label></div><div className="inline-form"><select value={foodId} onChange={(event) => setFoodId(event.target.value)}><option value="">Choose ingredient</option>{catalog.slice(0, 800).map((food) => <option key={food.id} value={food.id}>{food.displayName}</option>)}</select><input type="number" value={grams} min="0" onChange={(event) => setGrams(Number(event.target.value))} /><button onClick={() => foodId && setIngredients([...ingredients, { foodId, grams }])}>Add</button></div><ul className="plain-list">{ingredients.map((ingredient, index) => <li key={`${ingredient.foodId}-${index}`} className="plain-row"><span>{foodsById.get(ingredient.foodId)?.displayName ?? ingredient.foodId} - {ingredient.grams}g</span><button title="Remove ingredient" onClick={() => setIngredients(ingredients.filter((_, itemIndex) => itemIndex !== index))}><X size={16} /></button></li>)}</ul><button className="primary" disabled={!name.trim() || ingredients.length === 0} onClick={save}>Save recipe</button></div>;
+}
+
+function IdentityCreator({ onSave }: { onSave: (identity: IdentityProfile) => void }) {
+  const [name, setName] = useState("");
+  return <div className="panel inline-creator"><h2>Add person</h2><label>Name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Person name" /></label><button className="primary" disabled={!name.trim()} onClick={() => onSave({ ...blankIdentity(), identityId: `identity:${crypto.randomUUID().slice(0, 8)}`, identityName: name.trim(), profileType: "secondary" })}>Save person</button></div>;
+}
+
+function QuickLogCreator({ settings, identities, catalog, onSave }: { settings: AppSettings; identities: IdentityProfile[]; catalog: FoodCatalogItem[]; onSave: (settings: AppSettings, item: AppSettings["passiveQuickLogItems"][number], ingredient?: UserIngredient) => void }) {
+  const [itemName, setItemName] = useState("");
+  const [foodId, setFoodId] = useState("");
+  const [identityId, setIdentityId] = useState(settings.activeIdentityId);
+  const [defaultGrams, setDefaultGrams] = useState(100);
+  const selectedFood = catalog.find((food) => food.id === foodId);
+  function save() {
+    if (!selectedFood || defaultGrams <= 0) return;
+    const identity = identities.find((candidate) => candidate.identityId === identityId) ?? identities[0] ?? { ...blankIdentity(), identityId: settings.activeIdentityId, identityName: settings.activeIdentityName };
+    const itemId = `custom:${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
+    const linkedFoodId = selectedFood.id.startsWith("custom:") || selectedFood.id.startsWith("passive:") ? selectedFood.id : `passive:${itemId}`;
+    const item = { itemId, itemName: itemName.trim() || selectedFood.displayName, identityId: identity.identityId, identityName: identity.identityName, linkedFoodId, defaultGrams, ingredients: [] };
+    const ingredient = linkedFoodId === selectedFood.id ? undefined : { id: linkedFoodId, displayName: item.itemName, brandName: "Quick log", classification: "passive_custom", kcal100g: selectedFood.kcal100g, protein100g: selectedFood.protein100g, carbs100g: selectedFood.carbs100g, fat100g: selectedFood.fat100g, sourceKind: "passive" as const, iconName: selectedFood.iconName ?? "", updatedAt: new Date().toISOString() };
+    onSave({ ...settings, passiveQuickLogItems: [...settings.passiveQuickLogItems, item] }, item, ingredient);
+  }
+  return <div className="panel inline-creator"><h2>Create Quick Log</h2><label>Display name<input value={itemName} onChange={(event) => setItemName(event.target.value)} placeholder={selectedFood?.displayName ?? "Quick-log name"} /></label><label>Food<select value={foodId} onChange={(event) => setFoodId(event.target.value)}><option value="">Choose food or ingredient</option>{catalog.slice(0, 700).map((food) => <option key={food.id} value={food.id}>{food.displayName}</option>)}</select></label><label>Default grams<input type="number" min="1" value={defaultGrams} onChange={(event) => setDefaultGrams(Number(event.target.value))} /></label><label>Identity<select value={identityId} onChange={(event) => setIdentityId(event.target.value)}>{identities.map((identity) => <option key={identity.identityId} value={identity.identityId}>{identity.identityName}</option>)}</select></label><button className="primary" disabled={!foodId || defaultGrams <= 0} onClick={save}>Save Quick Log</button></div>;
 }
 
 function SearchScreen(props: { query: string; setQuery: (value: string) => void; results: ReturnType<typeof searchFoods>; selectedFood?: FoodCatalogItem; grams: number; setGrams: (value: number) => void; favoriteFoods: FoodCatalogItem[]; recentFoods: FoodCatalogItem[]; isFavorite: (foodId: string) => boolean; onToggleFavorite: (foodId: string) => void; onSelect: (food: FoodCatalogItem) => void; onClose: () => void; onWriteToken: (food: FoodCatalogItem) => void; onLog: (food: FoodCatalogItem, grams: number, mealLabel?: string) => void }) {

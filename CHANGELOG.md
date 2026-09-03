@@ -44,3 +44,8 @@
 - Routed token actions from food search, ingredients, recipes, people, quick-log, and generic token screens into Write Tokens instead of separate writer flows.
 - Added staged scale-writing session UI with queue progress, skip/retry/cancel controls, and product-facing scale connection messaging.
 - Added an SS1 token payload preparation layer and future `TokenWriter` hardware boundary without implementing physical NFC writing.
+- Deepened Write Tokens into a type-first workflow that asks what token the user wants to write, then routes Food / Ingredient, Recipe, Generic Token, Identity, and Quick-log through type-specific selectors.
+- Added token previews before queueing so users can confirm the label, token kind, and product-level meaning before preparing a physical token.
+- Added in-flow create-and-return paths for custom ingredients, recipes, people, Quick Logs, and Generic Tokens so missing entities can be created without losing the mixed token queue.
+- Documented current Generic Token semantics as reusable generic food entries with `generic:` ids that use the established ingredient payload shape, not intentional undefined/recovery tokens.
+- Kept real Bluetooth connection, scale token-write mode, PN532 physical writes, and firmware verification deferred.

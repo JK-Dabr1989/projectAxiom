@@ -9,6 +9,58 @@ export type TokenDefinitionType = "ingredient" | "recipe" | "identity" | "shortc
 export type TokenQueueStatus = "queued" | "ready" | "writing" | "written" | "failed" | "skipped";
 export type TokenWritingMode = "queue" | "writing" | "complete";
 
+export interface TokenCategoryMetadata {
+  tokenType: TokenDefinitionType;
+  eyebrow: string;
+  label: string;
+  description: string;
+  emptyTitle: string;
+  emptyAction: string;
+}
+
+export const TOKEN_CATEGORY_METADATA: TokenCategoryMetadata[] = [
+  {
+    tokenType: "ingredient",
+    eyebrow: "Food",
+    label: "Food / Ingredient",
+    description: "Select something you weigh regularly.",
+    emptyTitle: "No matching foods yet.",
+    emptyAction: "Create custom ingredient",
+  },
+  {
+    tokenType: "recipe",
+    eyebrow: "Recipe",
+    label: "Recipe",
+    description: "Start a saved recipe workflow.",
+    emptyTitle: "You don't have any recipes yet.",
+    emptyAction: "Create recipe",
+  },
+  {
+    tokenType: "generic",
+    eyebrow: "Generic",
+    label: "Generic Token",
+    description: "Use a reusable generic food token.",
+    emptyTitle: "You don't have any Generic Tokens yet.",
+    emptyAction: "Create Generic Token",
+  },
+  {
+    tokenType: "identity",
+    eyebrow: "Person",
+    label: "Identity",
+    description: "Switch who the scale is logging for.",
+    emptyTitle: "No extra people are set up yet.",
+    emptyAction: "Add person",
+  },
+  {
+    tokenType: "shortcut",
+    eyebrow: "Quick Log",
+    label: "Quick-log",
+    description: "Log a predefined item/amount immediately.",
+    emptyTitle: "You don't have any Quick Logs yet.",
+    emptyAction: "Create Quick Log",
+  },
+];
+
 export interface TokenDefinition {
   tokenType: TokenDefinitionType;
   displayLabel: string;
@@ -57,6 +109,22 @@ export function identityTokenDefinition(identity: IdentityProfile): TokenDefinit
 
 export function shortcutTokenDefinition(item: PassiveQuickLogItem): TokenDefinition {
   return buildPassiveRequest(item.itemId, item.itemName, item.itemId.startsWith("recipe:") ? "recipe" : "ingredient", item.defaultGrams);
+}
+
+export function tokenCategoryMetadata(type: TokenDefinitionType): TokenCategoryMetadata {
+  return TOKEN_CATEGORY_METADATA.find((item) => item.tokenType === type) ?? TOKEN_CATEGORY_METADATA[0];
+}
+
+export function tokenPreviewSummary(definition: TokenDefinition): string {
+  if (definition.tokenType === "recipe") return "Single recipe";
+  if (definition.tokenType === "shortcut") return definition.entityType === "shortcut_recipe" ? "Saved recipe quick-log" : "Saved food quick-log";
+  if (definition.tokenType === "generic") return "Reusable generic food token";
+  if (definition.tokenType === "identity") return "Person switch token";
+  return "Food token";
+}
+
+export function isIntentionalWriterTokenType(type: string): type is TokenDefinitionType {
+  return ["ingredient", "recipe", "identity", "shortcut", "generic"].includes(type);
 }
 
 export function queueItemFromDefinition(definition: TokenDefinition, id?: string): TokenWriteQueueItem {

@@ -28,7 +28,7 @@ Still intentionally constrained or incomplete:
 - Today/insight still lacks Android's week/month/year/custom dashboard ranges.
 - Generic entry/week refinement and rewrite-warning workflows are not yet fully mirrored.
 - Passive quick-log setup still supports food/ingredient shortcuts only; recipe/custom/composite passive item builders remain smaller than Android.
-- Hardware communication, NFC, and Bluetooth/scale writing remain out of scope for this parity pass.
+- Hardware communication, physical NFC writes, and Bluetooth/scale writing remain out of scope for this parity pass.
 
 ### 2026-09-02 Central Write Tokens Architecture
 
@@ -36,6 +36,8 @@ Implemented:
 
 - Added `Write Tokens` as the canonical token-writing destination in the More menu under Device.
 - Added a central mixed token queue for ingredient/food, recipe, identity/person, quick-log shortcut, and generic token entries.
+- Added token-type-specific selection paths with preview-before-queueing for Food / Ingredient, Recipe, Generic Token, Identity, and Quick-log.
+- Added create-missing-entity flows inside Write Tokens so new custom ingredients, recipes, people, quick-log shortcuts, and generic tokens return to the same queue context.
 - Added queue management for add, remove, reorder, clear, count, and start-writing state.
 - Added a staged writing-session UI with current token, progress count, retry, skip, cancel, and back-to-queue controls.
 - Routed token actions from food search, ingredient library, recipe library, people, quick-log, and generic token library into the same Write Tokens queue.
@@ -126,7 +128,7 @@ Current user-facing Android areas found in code:
 - Data export, backup, restore
 - Developer dataset export tooling
 - Help/setup guide
-- NFC tag write prompts for ingredient, recipe, identity, passive/shortcut tokens
+- Central NFC token preparation for food/ingredient, single recipe, identity, passive/quick-log, and generic food tokens
 
 Key Android app-side models found:
 
@@ -202,7 +204,7 @@ Business rules mirrored through the current Web build:
 | Web Bluetooth adapter | Deferred - requires BLE firmware | Not implemented |
 | Android NFC writing | Deferred - NFC | Not implemented |
 | Web NFC | Deferred - NFC | Not implemented |
-| Scale-side PN532 tag writing | Deferred - NFC | Not implemented; Web now has Write Tokens queue/session architecture only |
+| Scale-side PN532 tag writing | Deferred - NFC | Not implemented; Web now has Write Tokens selection, create-missing-entity, queue, and session architecture only |
 | Android-specific developer export tooling | Not applicable to Web validation | Not implemented |
 
 ## Hardware-Dependent Parity
@@ -221,6 +223,13 @@ Physical scale communication is not enabled in this Web validation build.
 Implemented:
 
 - Central Write Tokens workflow with mixed queue, staged session UI, and unified token actions from the app's token-capable screens.
+- Write Tokens starts from a clear token-type choice, supports token previews before queueing, and preserves the mixed queue while creating missing foods, recipes, people, quick-log shortcuts, or generic tokens inside the writer flow.
+- Food/Ingredient tokens search the combined bundled food catalog and custom ingredient list, then use the established ingredient SS1 payload.
+- Recipe tokens use the current Web recipe model, which is single-recipe only today, and build the established compact recipe SS1 payload from saved recipe ingredients.
+- Identity tokens switch the active person on the scale and remain separate from scale ownership.
+- Quick-log tokens use the saved passive quick-log definition and emit the established shortcut payload with the saved item reference and default grams.
+- Generic Tokens follow the current Axiom implementation as reusable generic food entries with `generic:` ids; Android and Web both write them through the ingredient payload shape rather than a separate undefined/unresolved token type.
+- Undefined/unresolved tokens remain review/recovery states and are not exposed as an intentional writer category.
 - Local ingredient library/editor with per-100g nutrition fields.
 - Custom ingredients included in search, recipes, manual logging, timeline display, and exports.
 - Zero-weight review with correct/keep/remove actions.
@@ -242,7 +251,21 @@ Partial:
 
 ## NFC Parity
 
-All NFC functionality is deferred.
+Implemented now:
+
+- Central token selection by product token type.
+- Token-type-specific selectors for Food / Ingredient, Recipe, Generic Token, Identity, and Quick-log.
+- Create-missing-entity flows that return to the same Write Tokens queue.
+- Mixed token queue management, preview, reorder, remove, clear, and staged writing-session state.
+- Canonical SS1 payload preparation where current Axiom semantics are available.
+- Future `TokenWriter` hardware boundary for scale-side writing.
+
+Deferred:
+
+- Real Bluetooth connection from Web App to scale.
+- Firmware token-write mode.
+- Physical PN532 NFC writing.
+- Firmware verification/read-back.
 
 NFC-only Android actions are not represented as working features in the current Axiom Web build.
 

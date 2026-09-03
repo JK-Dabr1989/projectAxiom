@@ -490,6 +490,81 @@ small {
   gap: 1rem;
 }
 
+.token-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.65rem;
+}
+
+.token-choice {
+  min-height: 118px;
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  text-align: left;
+}
+
+.token-choice strong {
+  font-size: 1rem;
+}
+
+.token-choice small {
+  color: #9ba6b2;
+  line-height: 1.35;
+}
+
+.token-choice.active {
+  border-color: rgba(216, 168, 78, 0.65);
+  background: #2a2216;
+}
+
+.token-selector {
+  display: grid;
+  gap: 0.85rem;
+  border-top: 1px solid #26313b;
+  padding-top: 1rem;
+}
+
+.token-empty {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.token-empty span {
+  color: #9ba6b2;
+}
+
+.token-preview {
+  display: grid;
+  gap: 0.4rem;
+  border: 1px solid #3a424c;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #10161d;
+}
+
+.token-preview h3,
+.token-preview p {
+  margin: 0;
+}
+
+.token-preview code {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-top: 0.5rem;
+  color: #ffd57f;
+}
+
+.inline-creator {
+  background: #0f151b;
+}
+
+.ready-write ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #c9d1d9;
+}
+
 .segmented {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
