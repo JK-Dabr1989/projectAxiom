@@ -6,11 +6,12 @@ export const TOKEN_MAX_RECIPE_STEPS = 12;
 export const WRITE_TOKENS_SCREEN_ID = "writeTokens";
 
 export type TokenDefinitionType = "ingredient" | "recipe" | "identity" | "shortcut" | "generic";
+export type TokenTopLevelType = Exclude<TokenDefinitionType, "shortcut">;
 export type TokenQueueStatus = "queued" | "ready" | "writing" | "written" | "failed" | "skipped";
 export type TokenWritingMode = "queue" | "writing" | "complete";
 
 export interface TokenCategoryMetadata {
-  tokenType: TokenDefinitionType;
+  tokenType: TokenTopLevelType;
   eyebrow: string;
   label: string;
   description: string;
@@ -25,7 +26,7 @@ export const TOKEN_CATEGORY_METADATA: TokenCategoryMetadata[] = [
     label: "Food / Ingredient",
     description: "Select something you weigh regularly.",
     emptyTitle: "No matching foods yet.",
-    emptyAction: "Create custom ingredient",
+    emptyAction: "Create ingredient",
   },
   {
     tokenType: "recipe",
@@ -40,8 +41,8 @@ export const TOKEN_CATEGORY_METADATA: TokenCategoryMetadata[] = [
     eyebrow: "Generic",
     label: "Generic Token",
     description: "Use a reusable generic food token.",
-    emptyTitle: "You don't have any Generic Tokens yet.",
-    emptyAction: "Create Generic Token",
+    emptyTitle: "Standard Generic Tokens are available.",
+    emptyAction: "Create generic token",
   },
   {
     tokenType: "identity",
@@ -51,14 +52,14 @@ export const TOKEN_CATEGORY_METADATA: TokenCategoryMetadata[] = [
     emptyTitle: "No extra people are set up yet.",
     emptyAction: "Add person",
   },
-  {
-    tokenType: "shortcut",
-    eyebrow: "Quick Log",
-    label: "Quick-log",
-    description: "Log a predefined item/amount immediately.",
-    emptyTitle: "You don't have any Quick Logs yet.",
-    emptyAction: "Create Quick Log",
-  },
+];
+
+export const DEFAULT_GENERIC_FOODS: FoodCatalogItem[] = [
+  genericFood("generic_pork", "Pork", 242, 27, 14, 0, "ham.png"),
+  genericFood("generic_lamb", "Lamb", 294, 25, 21, 0, "steak.png"),
+  genericFood("generic_beef", "Beef", 250, 26, 15, 0, "steak.png"),
+  genericFood("generic_chicken", "Chicken", 165, 31, 3.6, 0, "chick leg.png"),
+  genericFood("generic_fish", "Fish", 120, 22, 2, 0, "fish.png"),
 ];
 
 export interface TokenDefinition {
@@ -68,6 +69,7 @@ export interface TokenDefinition {
   payload: string;
   payloadVersion: string;
   entityType: string;
+  behaviorLabel: string;
 }
 
 export interface TokenWriteQueueItem {
@@ -78,6 +80,7 @@ export interface TokenWriteQueueItem {
   payload: string;
   payloadVersion: string;
   status: TokenQueueStatus;
+  behaviorLabel: string;
   error?: string | null;
 }
 
@@ -89,9 +92,9 @@ export interface TokenWritingSession {
 }
 
 export function foodTokenDefinition(food: FoodCatalogItem): TokenDefinition {
-  const tokenType: TokenDefinitionType = food.id.startsWith("generic:") ? "generic" : "ingredient";
+  const tokenType: TokenDefinitionType = isGenericFoodId(food.id) ? "generic" : "ingredient";
   const request = buildIngredientRequest(food.id, food.displayName);
-  return { ...request, tokenType };
+  return { ...request, tokenType, entityType: tokenType === "generic" ? "generic" : request.entityType, behaviorLabel: tokenType === "generic" ? "Generic food token" : "Weighed item" };
 }
 
 export function recipeTokenDefinition(recipe: Recipe, foodsById: Map<string, FoodCatalogItem>): TokenDefinition {
@@ -111,20 +114,33 @@ export function shortcutTokenDefinition(item: PassiveQuickLogItem): TokenDefinit
   return buildPassiveRequest(item.itemId, item.itemName, item.itemId.startsWith("recipe:") ? "recipe" : "ingredient", item.defaultGrams);
 }
 
-export function tokenCategoryMetadata(type: TokenDefinitionType): TokenCategoryMetadata {
+export function quickLogFoodTokenDefinition(food: FoodCatalogItem, grams: number): TokenDefinition {
+  return buildPassiveRequest(food.id, food.displayName, "ingredient", grams);
+}
+
+export function quickLogRecipeTokenDefinition(recipe: Recipe, grams: number): TokenDefinition {
+  return buildPassiveRequest(`recipe:${recipe.id}`, recipe.name, "recipe", grams);
+}
+
+export function tokenCategoryMetadata(type: TokenTopLevelType): TokenCategoryMetadata {
   return TOKEN_CATEGORY_METADATA.find((item) => item.tokenType === type) ?? TOKEN_CATEGORY_METADATA[0];
 }
 
 export function tokenPreviewSummary(definition: TokenDefinition): string {
-  if (definition.tokenType === "recipe") return "Single recipe";
-  if (definition.tokenType === "shortcut") return definition.entityType === "shortcut_recipe" ? "Saved recipe quick-log" : "Saved food quick-log";
-  if (definition.tokenType === "generic") return "Reusable generic food token";
-  if (definition.tokenType === "identity") return "Person switch token";
-  return "Food token";
+  return definition.behaviorLabel;
 }
 
 export function isIntentionalWriterTokenType(type: string): type is TokenDefinitionType {
   return ["ingredient", "recipe", "identity", "shortcut", "generic"].includes(type);
+}
+
+export function isTopLevelWriterTokenType(type: string): type is TokenTopLevelType {
+  return ["ingredient", "recipe", "identity", "generic"].includes(type);
+}
+
+export function isGenericFoodId(foodId: string): boolean {
+  const normalized = foodId.trim().toLowerCase();
+  return normalized === "generic_pork" || normalized === "generic_lamb" || normalized === "generic_beef" || normalized === "generic_chicken" || normalized === "generic_fish" || normalized.startsWith("generic_") || normalized.startsWith("generic:");
 }
 
 export function queueItemFromDefinition(definition: TokenDefinition, id?: string): TokenWriteQueueItem {
@@ -136,6 +152,7 @@ export function queueItemFromDefinition(definition: TokenDefinition, id?: string
     payload: definition.payload,
     payloadVersion: definition.payloadVersion,
     status: "queued",
+    behaviorLabel: definition.behaviorLabel,
     error: null,
   };
 }
@@ -225,7 +242,7 @@ function buildIngredientRequest(foodId: string, displayName: string): TokenDefin
   const sanitizedName = sanitizeField(displayName);
   const payload = `SS1|type=ingredient|id=${sanitizedId}|name=${sanitizedName}`;
   validatePayloadSize(payload);
-  return { tokenType: "ingredient", entityType: "ingredient", sourceEntityId: sanitizedId, displayLabel: sanitizedName, payload, payloadVersion: TOKEN_PAYLOAD_VERSION };
+  return { tokenType: "ingredient", entityType: "ingredient", sourceEntityId: sanitizedId, displayLabel: sanitizedName, payload, payloadVersion: TOKEN_PAYLOAD_VERSION, behaviorLabel: "Weighed item" };
 }
 
 function buildRecipeRequest(recipeId: string, displayName: string, steps: Array<{ foodId: string; displayName: string; grams: number }>): TokenDefinition {
@@ -244,7 +261,7 @@ function buildRecipeRequest(recipeId: string, displayName: string, steps: Array<
       const stepBlob = encodedSteps.map((step) => [step.foodId, stepLimit == null ? step.displayName : truncateTokenField(step.displayName, stepLimit), step.grams].join("^")).join("~");
       const payload = `SS1|type=recipe|id=${sanitizedId}|name=${candidateName}|steps=${stepBlob}`;
       if (asciiByteLength(payload) <= TOKEN_LEGACY_WRITABLE_BYTES) {
-        return { tokenType: "recipe", entityType: "recipe", sourceEntityId: sanitizedId, displayLabel: candidateName, payload, payloadVersion: TOKEN_PAYLOAD_VERSION };
+        return { tokenType: "recipe", entityType: "recipe", sourceEntityId: sanitizedId, displayLabel: candidateName, payload, payloadVersion: TOKEN_PAYLOAD_VERSION, behaviorLabel: "Recipe workflow" };
       }
     }
   }
@@ -256,7 +273,7 @@ function buildIdentityRequest(identityId: string, identityName: string): TokenDe
   const sanitizedName = sanitizeField(identityName);
   const payload = `SS1|type=identity|identity_id=${sanitizedId}|identity_name=${sanitizedName}`;
   validatePayloadSize(payload);
-  return { tokenType: "identity", entityType: "identity", sourceEntityId: sanitizedId, displayLabel: sanitizedName, payload, payloadVersion: TOKEN_PAYLOAD_VERSION };
+  return { tokenType: "identity", entityType: "identity", sourceEntityId: sanitizedId, displayLabel: sanitizedName, payload, payloadVersion: TOKEN_PAYLOAD_VERSION, behaviorLabel: "Person switch token" };
 }
 
 function buildPassiveRequest(referenceId: string, displayName: string, tokenType: "ingredient" | "recipe", defaultGrams?: number): TokenDefinition {
@@ -265,7 +282,34 @@ function buildPassiveRequest(referenceId: string, displayName: string, tokenType
   const grams = defaultGrams && defaultGrams > 0 ? formatGrams(defaultGrams) : null;
   const payload = `SS1|payload_version=${TOKEN_PAYLOAD_VERSION}|type=shortcut|token_type=${tokenType}|reference_id=${sanitizedReferenceId}|display_name=${sanitizedDisplayName}${grams ? `|default_grams=${grams}` : ""}`;
   validatePayloadSize(payload);
-  return { tokenType: "shortcut", entityType: `shortcut_${tokenType}`, sourceEntityId: sanitizedReferenceId, displayLabel: sanitizedDisplayName, payload, payloadVersion: TOKEN_PAYLOAD_VERSION };
+  return { tokenType: "shortcut", entityType: `shortcut_${tokenType}`, sourceEntityId: sanitizedReferenceId, displayLabel: sanitizedDisplayName, payload, payloadVersion: TOKEN_PAYLOAD_VERSION, behaviorLabel: `Quick log - ${grams ?? "saved"} g` };
+}
+
+function genericFood(id: string, displayName: string, kcal100g: number, protein100g: number, fat100g: number, carbs100g: number, iconName: string): FoodCatalogItem {
+  const normalized = displayName.toLowerCase();
+  return {
+    id,
+    displayName,
+    displayNameNormalized: normalized,
+    productConcept: displayName,
+    productConceptKey: normalized,
+    brandName: "Generic",
+    brandNameNormalized: "generic",
+    storeName: "",
+    searchAnchor: normalized,
+    stateCandidate: "generic",
+    uxCategory: "Generic food",
+    iconName,
+    kcal100g,
+    protein100g,
+    fat100g,
+    carbs100g,
+    source: "axiom_generic",
+    sourceRank: 0,
+    thumbnailLabel: displayName.slice(0, 2),
+    tokens: [normalized, "generic"],
+    headTokens: [normalized],
+  };
 }
 
 function validatePayloadSize(payload: string): void {

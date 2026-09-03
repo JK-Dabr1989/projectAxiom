@@ -36,8 +36,11 @@ Implemented:
 
 - Added `Write Tokens` as the canonical token-writing destination in the More menu under Device.
 - Added a central mixed token queue for ingredient/food, recipe, identity/person, quick-log shortcut, and generic token entries.
-- Added token-type-specific selection paths with preview-before-queueing for Food / Ingredient, Recipe, Generic Token, Identity, and Quick-log.
-- Added create-missing-entity flows inside Write Tokens so new custom ingredients, recipes, people, quick-log shortcuts, and generic tokens return to the same queue context.
+- Corrected the token writer information architecture to four top-level choices: Food / Ingredient, Recipe, Identity, and Generic.
+- Moved Quick-log out of the top-level token picker and into Food / Ingredient and Recipe behavior choices.
+- Added preview-before-queueing after entity selection and behavior selection.
+- Added create-missing-entity flows inside Write Tokens so new custom ingredients, recipes, people, and generic tokens return to the same queue context.
+- Added built-in Generic food tokens for Pork, Lamb, Beef, Chicken, and Fish so the Generic selector is populated on a clean install.
 - Added queue management for add, remove, reorder, clear, count, and start-writing state.
 - Added a staged writing-session UI with current token, progress count, retry, skip, cancel, and back-to-queue controls.
 - Routed token actions from food search, ingredient library, recipe library, people, quick-log, and generic token library into the same Write Tokens queue.
@@ -223,12 +226,12 @@ Physical scale communication is not enabled in this Web validation build.
 Implemented:
 
 - Central Write Tokens workflow with mixed queue, staged session UI, and unified token actions from the app's token-capable screens.
-- Write Tokens starts from a clear token-type choice, supports token previews before queueing, and preserves the mixed queue while creating missing foods, recipes, people, quick-log shortcuts, or generic tokens inside the writer flow.
-- Food/Ingredient tokens search the combined bundled food catalog and custom ingredient list, then use the established ingredient SS1 payload.
-- Recipe tokens use the current Web recipe model, which is single-recipe only today, and build the established compact recipe SS1 payload from saved recipe ingredients.
+- Write Tokens starts from four top-level choices: Food / Ingredient, Recipe, Identity, and Generic.
+- Food/Ingredient tokens search the combined bundled food catalog and custom ingredient list, then ask whether the token is a weighed item or a quick-log item with predefined grams.
+- Recipe tokens use the current Web recipe model, which is single-recipe only today, then ask whether the token uses the recipe workflow or a quick-log shortcut with predefined grams.
 - Identity tokens switch the active person on the scale and remain separate from scale ownership.
-- Quick-log tokens use the saved passive quick-log definition and emit the established shortcut payload with the saved item reference and default grams.
-- Generic Tokens follow the current Axiom implementation as reusable generic food entries with `generic:` ids; Android and Web both write them through the ingredient payload shape rather than a separate undefined/unresolved token type.
+- Quick-log is no longer a top-level writer category; it is a behavior under Food / Ingredient and Recipe and emits the established shortcut payload with the selected entity reference and default grams.
+- Generic Tokens follow the current Axiom implementation as reusable generic food entries; Web ships Pork, Lamb, Beef, Chicken, and Fish defaults and writes generic IDs through the ingredient payload shape with generic entity semantics rather than a separate undefined/unresolved token type.
 - Undefined/unresolved tokens remain review/recovery states and are not exposed as an intentional writer category.
 - Local ingredient library/editor with per-100g nutrition fields.
 - Custom ingredients included in search, recipes, manual logging, timeline display, and exports.
@@ -254,7 +257,8 @@ Partial:
 Implemented now:
 
 - Central token selection by product token type.
-- Token-type-specific selectors for Food / Ingredient, Recipe, Generic Token, Identity, and Quick-log.
+- Top-level selectors for Food / Ingredient, Recipe, Generic Token, and Identity.
+- Food / Ingredient and Recipe behavior selection for weighed/workflow tokens versus Quick log tokens.
 - Create-missing-entity flows that return to the same Write Tokens queue.
 - Mixed token queue management, preview, reorder, remove, clear, and staged writing-session state.
 - Canonical SS1 payload preparation where current Axiom semantics are available.

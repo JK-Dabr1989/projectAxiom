@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FoodCatalogItem, IdentityProfile, PassiveQuickLogItem, Recipe } from "../src/domain/models";
 import {
+  DEFAULT_GENERIC_FOODS,
   TOKEN_CATEGORY_METADATA,
   WRITE_TOKENS_SCREEN_ID,
   addTokenToQueue,
@@ -9,8 +10,11 @@ import {
   foodTokenDefinition,
   identityTokenDefinition,
   isIntentionalWriterTokenType,
+  isTopLevelWriterTokenType,
   markCurrentWritten,
   moveQueueItem,
+  quickLogFoodTokenDefinition,
+  quickLogRecipeTokenDefinition,
   recipeTokenDefinition,
   removeQueueItem,
   retryCurrentToken,
@@ -51,6 +55,8 @@ describe("token writing domain", () => {
     expect(foodTokenDefinition(food("fd_butter", "Butter")).payload).toBe("SS1|type=ingredient|id=fd_butter|name=Butter");
     expect(identityTokenDefinition(identity).payload).toBe("SS1|type=identity|identity_id=identity_jack|identity_name=Jack");
     expect(shortcutTokenDefinition(shortcut).payload).toBe("SS1|payload_version=ss1-v4|type=shortcut|token_type=ingredient|reference_id=shortcut_coffee|display_name=Morning coffee|default_grams=250");
+    expect(quickLogFoodTokenDefinition(food("fd_butter", "Butter"), 15).payload).toBe("SS1|payload_version=ss1-v4|type=shortcut|token_type=ingredient|reference_id=fd_butter|display_name=Butter|default_grams=15");
+    expect(quickLogRecipeTokenDefinition(recipe, 150).payload).toBe("SS1|payload_version=ss1-v4|type=shortcut|token_type=recipe|reference_id=recipe:recipe_chilli|display_name=Family chilli|default_grams=150");
     expect(recipeTokenDefinition(recipe, foodsById).payload).toContain("SS1|type=recipe|id=recipe_chilli|name=Family chilli|steps=");
   });
 
@@ -78,9 +84,10 @@ describe("token writing domain", () => {
     expect(WRITE_TOKENS_SCREEN_ID).toBe("writeTokens");
   });
 
-  it("exposes only intentional user-facing writer categories", () => {
-    expect(TOKEN_CATEGORY_METADATA.map((item) => item.tokenType)).toEqual(["ingredient", "recipe", "generic", "identity", "shortcut"]);
-    expect(TOKEN_CATEGORY_METADATA.map((item) => item.emptyAction)).toEqual(["Create custom ingredient", "Create recipe", "Create Generic Token", "Add person", "Create Quick Log"]);
+  it("removes Quick-log from top-level writer categories", () => {
+    expect(TOKEN_CATEGORY_METADATA.map((item) => item.tokenType)).toEqual(["ingredient", "recipe", "generic", "identity"]);
+    expect(TOKEN_CATEGORY_METADATA.map((item) => item.emptyAction)).toEqual(["Create ingredient", "Create recipe", "Create generic token", "Add person"]);
+    expect(isTopLevelWriterTokenType("shortcut")).toBe(false);
     expect(isIntentionalWriterTokenType("undefined")).toBe(false);
   });
 
@@ -102,9 +109,30 @@ describe("token writing domain", () => {
   });
 
   it("previews token type meaning without raw protocol labels", () => {
-    expect(tokenPreviewSummary(foodTokenDefinition(food("generic:03", "Generic 03")))).toBe("Reusable generic food token");
-    expect(tokenPreviewSummary(recipeTokenDefinition(recipe, foodsById))).toBe("Single recipe");
-    expect(tokenPreviewSummary(shortcutTokenDefinition(shortcut))).toBe("Saved food quick-log");
+    expect(tokenPreviewSummary(foodTokenDefinition(food("generic_03", "Generic 03")))).toBe("Generic food token");
+    expect(tokenPreviewSummary(recipeTokenDefinition(recipe, foodsById))).toBe("Recipe workflow");
+    expect(tokenPreviewSummary(quickLogFoodTokenDefinition(food("fd_coffee", "Coffee"), 250))).toBe("Quick log - 250 g");
+  });
+
+  it("ships standard generic foods and queues them as generic tokens", () => {
+    expect(DEFAULT_GENERIC_FOODS.map((food) => food.displayName)).toEqual(["Pork", "Lamb", "Beef", "Chicken", "Fish"]);
+
+    const queue = addTokenToQueue([], foodTokenDefinition(DEFAULT_GENERIC_FOODS[0]), "generic");
+    expect(queue[0].tokenType).toBe("generic");
+    expect(queue[0].sourceEntityId).toBe("generic_pork");
+    expect(queue[0].behaviorLabel).toBe("Generic food token");
+  });
+
+  it("supports weighed food, quick-log food, recipe, identity, and generic in one mixed queue", () => {
+    const queue = [
+      foodTokenDefinition(food("fd_chicken", "Chicken breast")),
+      quickLogFoodTokenDefinition(food("fd_butter", "Butter"), 15),
+      recipeTokenDefinition(recipe, foodsById),
+      identityTokenDefinition(identity),
+      foodTokenDefinition(DEFAULT_GENERIC_FOODS[4]),
+    ].reduce<TokenWriteQueueItem[]>((items, definition, index) => addTokenToQueue(items, definition, `mix${index}`), []);
+
+    expect(queue.map((item) => item.behaviorLabel)).toEqual(["Weighed item", "Quick log - 15 g", "Recipe workflow", "Person switch token", "Generic food token"]);
   });
 });
 

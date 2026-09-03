@@ -44,8 +44,11 @@
 - Routed token actions from food search, ingredients, recipes, people, quick-log, and generic token screens into Write Tokens instead of separate writer flows.
 - Added staged scale-writing session UI with queue progress, skip/retry/cancel controls, and product-facing scale connection messaging.
 - Added an SS1 token payload preparation layer and future `TokenWriter` hardware boundary without implementing physical NFC writing.
-- Deepened Write Tokens into a type-first workflow that asks what token the user wants to write, then routes Food / Ingredient, Recipe, Generic Token, Identity, and Quick-log through type-specific selectors.
+- Corrected Write Tokens to use four top-level choices: Food / Ingredient, Recipe, Identity, and Generic.
+- Moved Quick-log out of the top-level token picker and into Food / Ingredient and Recipe behavior choices with predefined grams.
+- Added Food / Ingredient behavior setup for weighed item tokens and Quick log tokens.
+- Added Recipe behavior setup for the current recipe workflow and Android-style recipe Quick log shortcut payloads.
 - Added token previews before queueing so users can confirm the label, token kind, and product-level meaning before preparing a physical token.
-- Added in-flow create-and-return paths for custom ingredients, recipes, people, Quick Logs, and Generic Tokens so missing entities can be created without losing the mixed token queue.
-- Documented current Generic Token semantics as reusable generic food entries with `generic:` ids that use the established ingredient payload shape, not intentional undefined/recovery tokens.
+- Added in-flow create-and-return paths for custom ingredients, recipes, people, and Generic Tokens so missing entities can be created without losing the mixed token queue.
+- Added built-in Generic food tokens for Pork, Lamb, Beef, Chicken, and Fish, with Android generic semantics using generic food IDs and the established ingredient payload shape.
 - Kept real Bluetooth connection, scale token-write mode, PN532 physical writes, and firmware verification deferred.

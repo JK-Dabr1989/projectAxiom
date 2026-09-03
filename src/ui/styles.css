@@ -555,6 +555,25 @@ small {
   color: #ffd57f;
 }
 
+.token-behavior {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.token-behavior h2,
+.token-behavior h3 {
+  margin: 0;
+}
+
+.behavior-form {
+  cursor: default;
+}
+
+.behavior-form button,
+.behavior-form input {
+  margin-top: 0.2rem;
+}
+
 .inline-creator {
   background: #0f151b;
 }
