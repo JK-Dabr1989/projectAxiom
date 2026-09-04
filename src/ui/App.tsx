@@ -9,7 +9,7 @@ import { lookupOpenFoodFacts, normalizeBarcode, type OpenFoodFactsDraft } from "
 import { registerServiceWorker } from "../pwa";
 import { applyPassiveShortcutConfig, applySourceMappings, isUnknownUnresolved, isZeroWeightUnresolved, resolveUnknownEntry, resolveZeroWeight, sourceKeyForEntry } from "../domain/review";
 import { recipePortionLogs } from "../domain/recipes";
-import { DEFAULT_GENERIC_FOODS, TOKEN_CATEGORY_METADATA, WRITE_TOKENS_SCREEN_ID, addTokenToQueue, currentSessionItem, failCurrentToken, foodTokenDefinition, identityTokenDefinition, isGenericFoodId, markCurrentWritten, markCurrentWriting, moveQueueItem, quickLogFoodTokenDefinition, quickLogRecipeTokenDefinition, recipeTokenDefinition, removeQueueItem, retryCurrentToken, shortcutTokenDefinition, skipCurrentToken, startWritingSession, tokenCategoryMetadata, tokenPreviewSummary, type TokenDefinition, type TokenTopLevelType, type TokenWriteQueueItem, type TokenWritingSession } from "../domain/tokenWriting";
+import { DEFAULT_GENERIC_FOODS, TOKEN_CATEGORY_METADATA, WRITE_TOKENS_SCREEN_ID, addTokenToQueue, currentSessionItem, failCurrentToken, foodTokenDefinition, identityTokenDefinition, isGenericFoodId, markCurrentWritten, markCurrentWriting, moveQueueItem, recipeTokenDefinition, removeQueueItem, resolveTokenCreationState, retryCurrentToken, shortcutTokenDefinition, skipCurrentToken, startWritingSession, tokenCategoryMetadata, tokenOptionActionLabel, tokenPreviewSummary, type TokenDefinition, type TokenTopLevelType, type TokenWriteQueueItem, type TokenWritingSession } from "../domain/tokenWriting";
 import {
   deleteIngredient,
   deleteIdentity,
@@ -40,6 +40,12 @@ import { parseRawLogLines, parseStatusBlock, scaleRecordToLogEntry } from "../pr
 type Screen = "today" | "search" | "timeline" | "recipes" | "ingredients" | "generic" | "barcode" | "passive" | "review" | "identities" | "data" | "help" | "settings" | "scale" | typeof WRITE_TOKENS_SCREEN_ID;
 
 type NavItem = { screen: Screen; label: string; icon: typeof Home };
+type TokenWriterSeed =
+  | { tokenFamily: "ingredient"; food: FoodCatalogItem }
+  | { tokenFamily: "recipe"; recipe: Recipe }
+  | { tokenFamily: "identity"; identity: IdentityProfile }
+  | { tokenFamily: "generic"; food: FoodCatalogItem }
+  | { tokenFamily: "shortcut"; item: AppSettings["passiveQuickLogItems"][number] };
 
 const primaryNavItems: NavItem[] = [
   { screen: "today", label: "Today", icon: Home },
@@ -88,6 +94,7 @@ export function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [tokenQueue, setTokenQueue] = useState<TokenWriteQueueItem[]>([]);
+  const [tokenWriterSeed, setTokenWriterSeed] = useState<TokenWriterSeed | null>(null);
 
   useEffect(() => {
     loadAll();
@@ -170,6 +177,11 @@ export function App() {
     }
   }
 
+  function openTokenWriter(seed: TokenWriterSeed) {
+    setTokenWriterSeed(seed);
+    navigate(WRITE_TOKENS_SCREEN_ID);
+  }
+
   async function logFood(food: FoodCatalogItem, amount: number, mealLabelOverride?: string) {
     const entry: LogEntry = {
       id: crypto.randomUUID(),
@@ -221,20 +233,20 @@ export function App() {
         {updateAvailable ? <div className="update-banner"><span>A newer Axiom build is ready.</span><button onClick={() => window.location.reload()}>Reload</button></div> : null}
         {message ? <p className="toast">{message}</p> : null}
         {screen === "today" && <TodayScreen groups={groups} totals={totals} onLog={() => navigate("search")} reviewCount={zeroWeightEntries.length + unknownEntries.length} onReview={() => navigate("review")} />}
-        {screen === "search" && <SearchScreen query={query} setQuery={setQuery} results={searchResults} selectedFood={selectedFood} grams={grams} setGrams={setGrams} favoriteFoods={favoriteFoods} recentFoods={recentFoods} isFavorite={(foodId) => favoriteIds.has(foodId)} onToggleFavorite={toggleFavorite} onSelect={(food) => { setSelectedFoodId(food.id); void rememberFood(food.id); }} onClose={() => setSelectedFoodId(null)} onWriteToken={(food) => tryEnqueueToken(() => foodTokenDefinition(food))} onLog={logFood} />}
+        {screen === "search" && <SearchScreen query={query} setQuery={setQuery} results={searchResults} selectedFood={selectedFood} grams={grams} setGrams={setGrams} favoriteFoods={favoriteFoods} recentFoods={recentFoods} isFavorite={(foodId) => favoriteIds.has(foodId)} onToggleFavorite={toggleFavorite} onSelect={(food) => { setSelectedFoodId(food.id); void rememberFood(food.id); }} onClose={() => setSelectedFoodId(null)} onWriteToken={(food) => openTokenWriter({ tokenFamily: "ingredient", food })} onLog={logFood} />}
         {screen === "timeline" && <TimelineScreen date={date} setDate={setDate} groups={groups} onUpdate={async (entry, nextGrams, meal) => { await upsertLog({ ...entry, grams: nextGrams, zeroWeightFlag: nextGrams === 0, mealLabelOverride: meal }); await loadAll(); }} onDelete={async (entryId) => { await deleteLog(entryId); await loadAll(); }} />}
-        {screen === "recipes" && <RecipesScreen catalog={catalog} foodsById={foodsById} recipes={recipes} settings={settings} favoriteRecipeIds={favoriteRecipeIds} onToggleFavorite={(recipeId) => toggleFavorite(`recipe:${recipeId}`)} onWriteToken={(recipe) => tryEnqueueToken(() => recipeTokenDefinition(recipe, foodsById))} onSave={async (recipe) => { await upsertRecipe(recipe); await loadAll(); }} onDelete={async (recipeId) => { await deleteRecipe(recipeId); await loadAll(); }} onLog={async (entries) => { for (const entry of entries) await upsertLog(entry); await loadAll(); setScreen("today"); setMessage("Recipe logged"); }} />}
-        {screen === "ingredients" && <IngredientsScreen ingredients={ingredients} logs={logs} recipes={recipes} onWriteToken={(ingredient) => tryEnqueueToken(() => foodTokenDefinition(ingredientToCatalogItem(ingredient)))} onSave={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); }} onDelete={async (id) => { await deleteIngredient(id); await loadAll(); }} />}
-        {screen === "generic" && <GenericTokensScreen ingredients={ingredients} logs={logs} onWriteToken={(food) => tryEnqueueToken(() => foodTokenDefinition(food))} onSave={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); }} onDelete={async (id) => { await deleteIngredient(id); await loadAll(); }} />}
+        {screen === "recipes" && <RecipesScreen catalog={catalog} foodsById={foodsById} recipes={recipes} settings={settings} favoriteRecipeIds={favoriteRecipeIds} onToggleFavorite={(recipeId) => toggleFavorite(`recipe:${recipeId}`)} onWriteToken={(recipe) => openTokenWriter({ tokenFamily: "recipe", recipe })} onSave={async (recipe) => { await upsertRecipe(recipe); await loadAll(); }} onDelete={async (recipeId) => { await deleteRecipe(recipeId); await loadAll(); }} onLog={async (entries) => { for (const entry of entries) await upsertLog(entry); await loadAll(); setScreen("today"); setMessage("Recipe logged"); }} />}
+        {screen === "ingredients" && <IngredientsScreen ingredients={ingredients} logs={logs} recipes={recipes} onWriteToken={(ingredient) => openTokenWriter({ tokenFamily: "ingredient", food: ingredientToCatalogItem(ingredient) })} onSave={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); }} onDelete={async (id) => { await deleteIngredient(id); await loadAll(); }} />}
+        {screen === "generic" && <GenericTokensScreen ingredients={ingredients} logs={logs} onWriteToken={(food) => openTokenWriter({ tokenFamily: "generic", food })} onSave={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); }} onDelete={async (id) => { await deleteIngredient(id); await loadAll(); }} />}
         {screen === "barcode" && <BarcodeScreen onSave={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); setScreen("ingredients"); setMessage("Barcode ingredient saved"); }} />}
-        {screen === "passive" && <PassiveScreen settings={settings} identities={identities} catalog={catalog} onWriteToken={(item) => tryEnqueueToken(() => shortcutTokenDefinition(item))} onSave={async (nextSettings, ingredient) => { if (ingredient) await upsertIngredient(ingredient); await setSettings(nextSettings); }} />}
+        {screen === "passive" && <PassiveScreen settings={settings} identities={identities} catalog={catalog} onWriteToken={(item) => openTokenWriter({ tokenFamily: "shortcut", item })} onSave={async (nextSettings, ingredient) => { if (ingredient) await upsertIngredient(ingredient); await setSettings(nextSettings); }} />}
         {screen === "review" && <ReviewScreen zeroWeightEntries={zeroWeightEntries} unknownEntries={unknownEntries} foodsById={foodsById} searchResults={searchResults} query={query} setQuery={setQuery} onResolveZero={async (entry, nextGrams) => { await upsertLog(resolveZeroWeight(entry, nextGrams)); await loadAll(); }} onDelete={async (id) => { await deleteLog(id); await loadAll(); }} onResolveUnknown={async (entry, foodId) => { const resolved = resolveUnknownEntry(entry, foodId); await upsertLog(resolved); const key = sourceKeyForEntry(entry); if (key) await upsertSourceMapping({ sourceKey: key, foodId, displayName: foodsById.get(foodId)?.displayName ?? foodId, updatedAt: new Date().toISOString() }); await loadAll(); }} />}
-        {screen === "identities" && <IdentitiesScreen identities={identities} settings={settings} onWriteToken={(identity) => tryEnqueueToken(() => identityTokenDefinition(identity))} onSave={async (identity) => { await upsertIdentity(identity); await loadAll(); }} onDelete={async (id) => { await deleteIdentity(id); if (settings.activeIdentityId === id) await saveSettings({ ...settings, activeIdentityId: "default", activeIdentityName: "Default" }); await loadAll(); }} onSwitch={async (identity) => setSettings({ ...settings, activeIdentityId: identity.identityId, activeIdentityName: identity.identityName })} />}
+        {screen === "identities" && <IdentitiesScreen identities={identities} settings={settings} onWriteToken={(identity) => openTokenWriter({ tokenFamily: "identity", identity })} onSave={async (identity) => { await upsertIdentity(identity); await loadAll(); }} onDelete={async (id) => { await deleteIdentity(id); if (settings.activeIdentityId === id) await saveSettings({ ...settings, activeIdentityId: "default", activeIdentityName: "Default" }); await loadAll(); }} onSwitch={async (identity) => setSettings({ ...settings, activeIdentityId: identity.identityId, activeIdentityName: identity.identityName })} />}
         {screen === "data" && <DataScreen settings={settings} logs={logs} recipes={recipes} ingredients={ingredients} identities={identities} sourceMappings={sourceMappings} foodPreferences={foodPreferences} foodsById={foodsById} onRestored={loadAll} />}
         {screen === "help" && <HelpScreen />}
         {screen === "settings" && <SettingsScreen settings={settings} setSettings={setSettings} onReset={async () => { if (!window.confirm("Reset local Axiom data on this device? Export a backup first if you want to keep it.")) return; await resetLocalData(); await loadAll(); setMessage("Local app data reset"); }} />}
         {screen === "scale" && <ScaleScreen existingLogs={logs} mappings={sourceMappings} passiveItems={settings.passiveQuickLogItems} onImport={async (entries) => { for (const entry of entries) await upsertLog(entry); await loadAll(); }} />}
-        {screen === WRITE_TOKENS_SCREEN_ID && <WriteTokensScreen catalog={catalog} foodsById={foodsById} recipes={recipes} identities={identities} queue={tokenQueue} setQueue={setTokenQueue} onAddToken={(definition) => setTokenQueue((queue) => addTokenToQueue(queue, definition))} onSaveIngredient={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); }} onSaveRecipe={async (recipe) => { await upsertRecipe(recipe); await loadAll(); }} onSaveIdentity={async (identity) => { await upsertIdentity(identity); await loadAll(); }} />}
+        {screen === WRITE_TOKENS_SCREEN_ID && <WriteTokensScreen catalog={catalog} foodsById={foodsById} recipes={recipes} identities={identities} initialSeed={tokenWriterSeed} onConsumedInitialSeed={() => setTokenWriterSeed(null)} queue={tokenQueue} setQueue={setTokenQueue} onAddToken={(definition) => setTokenQueue((queue) => addTokenToQueue(queue, definition))} onSaveIngredient={async (ingredient) => { await upsertIngredient(ingredient); await loadAll(); }} onSaveRecipe={async (recipe) => { await upsertRecipe(recipe); await loadAll(); }} onSaveIdentity={async (identity) => { await upsertIdentity(identity); await loadAll(); }} />}
       </main>
       <BottomNav currentScreen={screen} moreOpen={moreOpen} onNavigate={navigate} onMore={() => setMoreOpen((open) => !open)} />
       <MoreSheet currentScreen={screen} open={moreOpen} onClose={() => setMoreOpen(false)} onNavigate={navigate} />
@@ -297,7 +309,7 @@ function TodayScreen({ groups, totals, reviewCount, onLog, onReview }: { groups:
   return <section className="stack"><div className="metrics"><Metric label="Calories" value={Math.round(totals.kcal).toString()} unit="kcal" /><Metric label="Protein" value={totals.protein.toFixed(1)} unit="g" /><Metric label="Carbs" value={totals.carbs.toFixed(1)} unit="g" /><Metric label="Fat" value={totals.fat.toFixed(1)} unit="g" /></div><div className="button-row"><button className="primary" onClick={onLog}>Log food</button><button onClick={onReview}>Review {reviewCount}</button></div><MealGroups groups={groups} editable={false} /></section>;
 }
 
-function WriteTokensScreen({ catalog, foodsById, recipes, identities, queue, setQueue, onAddToken, onSaveIngredient, onSaveRecipe, onSaveIdentity }: { catalog: FoodCatalogItem[]; foodsById: Map<string, FoodCatalogItem>; recipes: Recipe[]; identities: IdentityProfile[]; queue: TokenWriteQueueItem[]; setQueue: (queue: TokenWriteQueueItem[]) => void; onAddToken: (definition: TokenDefinition) => void; onSaveIngredient: (ingredient: UserIngredient) => Promise<void> | void; onSaveRecipe: (recipe: Recipe) => Promise<void> | void; onSaveIdentity: (identity: IdentityProfile) => Promise<void> | void }) {
+function WriteTokensScreen({ catalog, foodsById, recipes, identities, initialSeed, onConsumedInitialSeed, queue, setQueue, onAddToken, onSaveIngredient, onSaveRecipe, onSaveIdentity }: { catalog: FoodCatalogItem[]; foodsById: Map<string, FoodCatalogItem>; recipes: Recipe[]; identities: IdentityProfile[]; initialSeed: TokenWriterSeed | null; onConsumedInitialSeed: () => void; queue: TokenWriteQueueItem[]; setQueue: (queue: TokenWriteQueueItem[]) => void; onAddToken: (definition: TokenDefinition) => void; onSaveIngredient: (ingredient: UserIngredient) => Promise<void> | void; onSaveRecipe: (recipe: Recipe) => Promise<void> | void; onSaveIdentity: (identity: IdentityProfile) => Promise<void> | void }) {
   const [category, setCategory] = useState<TokenTopLevelType | null>(null);
   const [query, setQuery] = useState("");
   const [recipeQuery, setRecipeQuery] = useState("");
@@ -308,6 +320,7 @@ function WriteTokensScreen({ catalog, foodsById, recipes, identities, queue, set
   const [creationMode, setCreationMode] = useState<TokenTopLevelType | null>(null);
   const [session, setSession] = useState<TokenWritingSession | null>(null);
   const [writerMessage, setWriterMessage] = useState(new UnavailableTokenWriter().getStatus().message);
+  const [queueMessage, setQueueMessage] = useState("");
   const customGenericTokens = catalog.filter((food) => isGenericFoodId(food.id) && !DEFAULT_GENERIC_FOODS.some((item) => item.id === food.id));
   const genericTokens = [...DEFAULT_GENERIC_FOODS, ...customGenericTokens];
   const foodResults = searchFoods(category === "generic" ? genericTokens : catalog, query);
@@ -315,26 +328,62 @@ function WriteTokensScreen({ catalog, foodsById, recipes, identities, queue, set
   const current = session ? currentSessionItem(session) : null;
   const writtenCount = (session?.items ?? queue).filter((item) => item.status === "written").length;
   const meta = category ? tokenCategoryMetadata(category) : null;
+  useEffect(() => {
+    if (!initialSeed) return;
+    if (initialSeed.tokenFamily === "ingredient") {
+      chooseCategory("ingredient");
+      setSelectedFood(initialSeed.food);
+    } else if (initialSeed.tokenFamily === "recipe") {
+      chooseCategory("recipe");
+      setSelectedRecipe(initialSeed.recipe);
+    } else if (initialSeed.tokenFamily === "generic") {
+      chooseCategory("generic");
+      addResolved(resolveTokenCreationState({ tokenFamily: "generic", source: initialSeed.food }));
+    } else if (initialSeed.tokenFamily === "identity") {
+      chooseCategory("identity");
+      addResolved(resolveTokenCreationState({ tokenFamily: "identity", source: initialSeed.identity }));
+    } else {
+      chooseCategory(initialSeed.item.itemId.startsWith("recipe:") ? "recipe" : "ingredient");
+      addDefinition(shortcutTokenDefinition(initialSeed.item));
+    }
+    onConsumedInitialSeed();
+  }, [initialSeed, onConsumedInitialSeed]);
   function chooseCategory(next: TokenTopLevelType) {
     setCategory(next);
     setPreview(null);
+    setQueueMessage("");
     setCreationMode(null);
     setQuery("");
     setRecipeQuery("");
     setSelectedFood(null);
     setSelectedRecipe(null);
   }
-  function previewEntity(createDefinition: () => TokenDefinition) {
-    try {
-      setPreview(createDefinition());
-    } catch (error) {
-      setWriterMessage(error instanceof Error ? error.message : "Token could not be prepared");
+  function previewResolved(state: ReturnType<typeof resolveTokenCreationState>) {
+    if (state.canQueue && state.definition) {
+      setPreview(state.definition);
+      setQueueMessage("");
+      return;
     }
+    setPreview(null);
+    setWriterMessage(state.message);
+  }
+  function addResolved(state: ReturnType<typeof resolveTokenCreationState>) {
+    if (state.canQueue && state.definition) {
+      addDefinition(state.definition);
+      return;
+    }
+    setPreview(null);
+    setQueueMessage("");
+    setWriterMessage(state.message);
+  }
+  function addDefinition(definition: TokenDefinition) {
+    onAddToken(definition);
+    setPreview(null);
+    setQueueMessage(`${definition.displayLabel} added to queue.`);
   }
   function addPreview() {
     if (!preview) return;
-    onAddToken(preview);
-    setPreview(null);
+    addDefinition(preview);
   }
   async function connectScale() {
     try {
@@ -353,7 +402,7 @@ function WriteTokensScreen({ catalog, foodsById, recipes, identities, queue, set
     await onSaveIngredient(ingredient);
     setCreationMode(null);
     chooseCategory("generic");
-    setPreview(foodTokenDefinition(ingredientToCatalogItem(ingredient)));
+    addDefinition(foodTokenDefinition(ingredientToCatalogItem(ingredient)));
   }
   async function saveCreatedRecipe(recipe: Recipe) {
     await onSaveRecipe(recipe);
@@ -365,7 +414,7 @@ function WriteTokensScreen({ catalog, foodsById, recipes, identities, queue, set
     await onSaveIdentity(identity);
     setCreationMode(null);
     chooseCategory("identity");
-    setPreview(identityTokenDefinition(identity));
+    addDefinition(identityTokenDefinition(identity));
   }
   if (session?.mode === "complete") {
     return <section className="stack write-tokens"><div className="panel completion-panel"><p className="eyebrow">Write Tokens</p><h1>{writtenCount} tokens written</h1><div className="result-list">{session.items.map((item) => <article className="queue-row" key={item.id}><span className="thumb">{queueTokenTypeLabel(item).slice(0, 2)}</span><div><strong>{item.displayLabel}</strong><small>{queueTokenTypeLabel(item)} | {item.behaviorLabel} | {item.status}</small></div></article>)}</div><div className="button-row"><button className="primary" onClick={() => { setQueue([]); setSession(null); }}>Done</button><button onClick={() => { setQueue([]); setSession(null); }}>Write more tokens</button></div></div></section>;
@@ -373,7 +422,7 @@ function WriteTokensScreen({ catalog, foodsById, recipes, identities, queue, set
   if (session?.mode === "writing" && current) {
     return <section className="stack write-tokens"><div className="panel session-panel"><p className="eyebrow">Write Tokens</p><h1>{session.currentIndex + 1} of {session.items.length}</h1><div className="progress-track"><span style={{ width: `${Math.max(4, ((session.currentIndex + 1) / session.items.length) * 100)}%` }} /></div><div className="current-token"><span className="thumb">{queueTokenTypeLabel(current).slice(0, 2)}</span><div><p className="eyebrow">Current token</p><h2>{current.displayLabel}</h2><p className="muted">{queueTokenTypeLabel(current)} | {current.behaviorLabel}</p></div></div><div className={current.status === "failed" ? "status-pill danger-pill" : "status-pill"}>{current.status === "failed" ? current.error : writerMessage}</div><p className="muted">{current.status === "failed" ? "Retry this token or skip it before continuing." : "Place a blank NFC token on the scale when token write mode is available."}</p><div className="button-row"><button onClick={() => setSession(null)}>Back to queue</button><button onClick={() => setSession(null)}>Cancel session</button><button onClick={() => setSession(skipCurrentToken(session))}><SkipForward size={16} /> Skip current token</button>{current.status === "failed" ? <button onClick={() => setSession(retryCurrentToken(session))}><RefreshCcw size={16} /> Retry failed token</button> : null}{import.meta.env.DEV ? <><button onClick={() => setSession(markCurrentWriting(session))}>Dev writing</button><button onClick={() => setSession(markCurrentWritten(session))}>Dev written</button><button onClick={() => setSession(failCurrentToken(session, "Development simulated write failure."))}>Dev fail</button></> : null}</div></div></section>;
   }
-  return <section className="stack write-tokens"><div className="panel write-hero"><p className="eyebrow">Write Tokens</p><h1>Write Tokens</h1><p>Create Axiom NFC tokens using the NFC reader/writer built into your scale.</p></div><div className="split"><div className="panel token-picker"><h2>What do you want to write?</h2><div className="token-choice-grid">{TOKEN_CATEGORY_METADATA.map((item) => <button key={item.tokenType} className={category === item.tokenType ? "token-choice active" : "token-choice"} onClick={() => chooseCategory(item.tokenType)}><span className="eyebrow">{item.eyebrow}</span><strong>{item.label}</strong><small>{item.description}</small></button>)}</div>{meta ? <div className="token-selector"><div className="title-row"><div><p className="eyebrow">{meta.eyebrow}</p><h2>{meta.label}</h2></div>{category !== "generic" ? <button onClick={() => category && setCreationMode(category)}>{meta.emptyAction}</button> : <button onClick={() => setCreationMode("generic")}>Create generic token</button>}</div>{creationMode === "ingredient" ? <IngredientForm ingredient={null} onSave={saveCreatedIngredient} /> : null}{creationMode === "generic" ? <GenericTokenForm token={null} onSave={saveCreatedGeneric} /> : null}{creationMode === "recipe" ? <RecipeCreator catalog={catalog} foodsById={foodsById} onSave={saveCreatedRecipe} /> : null}{creationMode === "identity" ? <IdentityCreator onSave={saveCreatedIdentity} /> : null}{!creationMode && category === "ingredient" && !selectedFood ? <div className="stack"><input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search foods and ingredients" /><div className="result-list">{foodResults.map(({ food, score }) => <button key={food.id} className="result-row" onClick={() => { setSelectedFood(food); setPreview(null); }}><span className="thumb">{food.thumbnailLabel || food.displayName.slice(0, 2)}</span><span><strong>{food.displayName}</strong><small>{[food.brandName, food.storeName, food.stateCandidate].filter(Boolean).join(" | ")}</small></span><em>{score}</em></button>)}</div>{foodResults.length === 0 ? <EmptyTokenState title="No matching foods yet." action="Create ingredient" onCreate={() => setCreationMode("ingredient")} /> : null}</div> : null}{!creationMode && category === "ingredient" && selectedFood ? <FoodBehaviorChooser food={selectedFood} grams={quickLogGrams} setGrams={setQuickLogGrams} onBack={() => { setSelectedFood(null); setPreview(null); }} onWeighed={() => previewEntity(() => foodTokenDefinition(selectedFood))} onQuickLog={() => previewEntity(() => quickLogFoodTokenDefinition(selectedFood, quickLogGrams))} /> : null}{!creationMode && category === "recipe" && !selectedRecipe ? <div className="stack"><input className="search-input" value={recipeQuery} onChange={(event) => setRecipeQuery(event.target.value)} placeholder="Search recipes" />{recipeResults.length === 0 ? <EmptyTokenState title="No recipes available." action="Create recipe" onCreate={() => setCreationMode("recipe")} /> : <div className="result-list">{recipeResults.map((recipe) => <button key={recipe.id} className="result-row" onClick={() => { setSelectedRecipe(recipe); setPreview(null); }}><span className="thumb">{recipe.iconName || recipe.name.slice(0, 2)}</span><span><strong>{recipe.name}</strong><small>{recipe.ingredients.length} ingredients | {recipe.mealLabel}</small></span><em>Choose</em></button>)}</div>}</div> : null}{!creationMode && category === "recipe" && selectedRecipe ? <RecipeBehaviorChooser recipe={selectedRecipe} grams={quickLogGrams} setGrams={setQuickLogGrams} onBack={() => { setSelectedRecipe(null); setPreview(null); }} onRecipe={() => previewEntity(() => recipeTokenDefinition(selectedRecipe, foodsById))} onQuickLog={() => previewEntity(() => quickLogRecipeTokenDefinition(selectedRecipe, quickLogGrams))} /> : null}{!creationMode && category === "generic" ? <div className="stack"><div className="result-list">{genericTokens.map((food) => <button key={food.id} className="result-row" onClick={() => previewEntity(() => foodTokenDefinition(food))}><span className="thumb">{food.thumbnailLabel || food.displayName.slice(0, 2)}</span><span><strong>{food.displayName}</strong><small>Generic food token</small></span><em>Choose</em></button>)}</div></div> : null}{!creationMode && category === "identity" ? <div className="stack">{identities.length === 0 ? <EmptyTokenState title="No people are set up yet." action="Add person" onCreate={() => setCreationMode("identity")} /> : <div className="result-list">{identities.map((identity) => <button key={identity.identityId} className="result-row" onClick={() => previewEntity(() => identityTokenDefinition(identity))}><span className="thumb">{identity.identityName.slice(0, 2)}</span><span><strong>{identity.identityName}</strong><small>{identity.profileType === "primary" ? "Primary person" : "Household person"}</small></span><em>Choose</em></button>)}</div>}<button onClick={() => setCreationMode("identity")}>Add person</button></div> : null}{preview ? <TokenPreview definition={preview} onAdd={addPreview} onCancel={() => setPreview(null)} /> : null}</div> : <p className="muted">Choose a token type to select what the token represents, then choose how it should behave.</p>}</div><QueuePanel queue={queue} setQueue={setQueue} writerMessage={writerMessage} connectScale={connectScale} startSession={() => setSession(startWritingSession(queue))} /></div></section>;
+  return <section className="stack write-tokens"><div className="panel write-hero"><p className="eyebrow">Write Tokens</p><h1>Write Tokens</h1><p>Create Axiom NFC tokens using the NFC reader/writer built into your scale.</p></div><div className="split"><div className="panel token-picker"><h2>What do you want to write?</h2><div className="token-choice-grid">{TOKEN_CATEGORY_METADATA.map((item) => <button key={item.tokenType} className={category === item.tokenType ? "token-choice active" : "token-choice"} onClick={() => chooseCategory(item.tokenType)}><span className="eyebrow">{item.eyebrow}</span><strong>{item.label}</strong><small>{item.description}</small></button>)}</div>{queueMessage ? <p className="status-pill">{queueMessage}</p> : null}{meta ? <div className="token-selector"><div className="title-row"><div><p className="eyebrow">{meta.eyebrow}</p><h2>{meta.label}</h2></div>{category !== "generic" ? <button onClick={() => category && setCreationMode(category)}>{meta.emptyAction}</button> : <button onClick={() => setCreationMode("generic")}>Create generic token</button>}</div>{creationMode === "ingredient" ? <IngredientForm ingredient={null} onSave={saveCreatedIngredient} /> : null}{creationMode === "generic" ? <GenericTokenForm token={null} onSave={saveCreatedGeneric} /> : null}{creationMode === "recipe" ? <RecipeCreator catalog={catalog} foodsById={foodsById} onSave={saveCreatedRecipe} /> : null}{creationMode === "identity" ? <IdentityCreator onSave={saveCreatedIdentity} /> : null}{!creationMode && category === "ingredient" && !selectedFood ? <div className="stack"><input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search foods and ingredients" /><div className="result-list">{foodResults.map(({ food }) => <button key={food.id} className="result-row" onClick={() => { setSelectedFood(food); setPreview(null); setQueueMessage(""); }}><span className="thumb">{food.thumbnailLabel || food.displayName.slice(0, 2)}</span><span><strong>{food.displayName}</strong><small>{[food.brandName, food.storeName, food.stateCandidate].filter(Boolean).join(" | ")}</small></span><em>{tokenOptionActionLabel({ tokenFamily: "ingredient", source: food })}</em></button>)}</div>{foodResults.length === 0 ? <EmptyTokenState title="No matching foods yet." action="Create ingredient" onCreate={() => setCreationMode("ingredient")} /> : null}</div> : null}{!creationMode && category === "ingredient" && selectedFood ? <FoodBehaviorChooser food={selectedFood} grams={quickLogGrams} setGrams={setQuickLogGrams} onBack={() => { setSelectedFood(null); setPreview(null); }} onWeighed={() => previewResolved(resolveTokenCreationState({ tokenFamily: "ingredient", source: selectedFood, behaviorSubtype: "weighed" }))} onQuickLog={() => previewResolved(resolveTokenCreationState({ tokenFamily: "ingredient", source: selectedFood, behaviorSubtype: "set_portion", amountGrams: quickLogGrams }))} /> : null}{!creationMode && category === "recipe" && !selectedRecipe ? <div className="stack"><input className="search-input" value={recipeQuery} onChange={(event) => setRecipeQuery(event.target.value)} placeholder="Search recipes" />{recipeResults.length === 0 ? <EmptyTokenState title="No recipes available." action="Create recipe" onCreate={() => setCreationMode("recipe")} /> : <div className="result-list">{recipeResults.map((recipe) => <button key={recipe.id} className="result-row" onClick={() => { setSelectedRecipe(recipe); setPreview(null); setQueueMessage(""); }}><span className="thumb">{recipe.iconName || recipe.name.slice(0, 2)}</span><span><strong>{recipe.name}</strong><small>{recipe.ingredients.length} ingredients | {recipe.mealLabel}</small></span><em>{tokenOptionActionLabel({ tokenFamily: "recipe", source: recipe })}</em></button>)}</div>}</div> : null}{!creationMode && category === "recipe" && selectedRecipe ? <RecipeBehaviorChooser recipe={selectedRecipe} grams={quickLogGrams} setGrams={setQuickLogGrams} onBack={() => { setSelectedRecipe(null); setPreview(null); }} onRecipe={() => previewResolved(resolveTokenCreationState({ tokenFamily: "recipe", source: selectedRecipe, behaviorSubtype: "recipe_workflow", foodsById }))} onQuickLog={() => previewResolved(resolveTokenCreationState({ tokenFamily: "recipe", source: selectedRecipe, behaviorSubtype: "set_portion", amountGrams: quickLogGrams }))} /> : null}{!creationMode && category === "generic" ? <div className="stack"><div className="result-list">{genericTokens.map((food) => <button key={food.id} className="result-row" onClick={() => addResolved(resolveTokenCreationState({ tokenFamily: "generic", source: food }))}><span className="thumb">{food.thumbnailLabel || food.displayName.slice(0, 2)}</span><span><strong>{food.displayName}</strong><small>Generic food token</small></span><em>{tokenOptionActionLabel({ tokenFamily: "generic", source: food })}</em></button>)}</div></div> : null}{!creationMode && category === "identity" ? <div className="stack">{identities.length === 0 ? <EmptyTokenState title="No people are set up yet." action="Add person" onCreate={() => setCreationMode("identity")} /> : <div className="result-list">{identities.map((identity) => <button key={identity.identityId} className="result-row" onClick={() => addResolved(resolveTokenCreationState({ tokenFamily: "identity", source: identity }))}><span className="thumb">{identity.identityName.slice(0, 2)}</span><span><strong>{identity.identityName}</strong><small>{identity.profileType === "primary" ? "Primary person" : "Household person"}</small></span><em>{tokenOptionActionLabel({ tokenFamily: "identity", source: identity })}</em></button>)}</div>}<button onClick={() => setCreationMode("identity")}>Add person</button></div> : null}{preview ? <TokenPreview definition={preview} onAdd={addPreview} onCancel={() => setPreview(null)} /> : null}</div> : <p className="muted">Choose a token type to select what the token represents, then choose how it should behave.</p>}</div><QueuePanel queue={queue} setQueue={setQueue} writerMessage={writerMessage} connectScale={connectScale} startSession={() => setSession(startWritingSession(queue))} /></div></section>;
 }
 
 function EmptyTokenState({ title, action, onCreate }: { title: string; action: string; onCreate: () => void }) {

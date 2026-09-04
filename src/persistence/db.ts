@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { AppSettings, FoodPreference, IdentityProfile, LogEntry, Recipe, SourceMapping, UserIngredient } from "../domain/models";
+import { DEFAULT_GENERIC_INGREDIENTS, mergeDefaultGenericIngredients } from "../domain/tokenWriting";
 
 const DB_NAME = "axiom-web-local";
 const DB_VERSION = 2;
@@ -160,6 +161,7 @@ export async function getRecipes(): Promise<Recipe[]> {
 
 export async function getIngredients(): Promise<UserIngredient[]> {
   const database = await db();
+  await ensureDefaultGenericIngredients(database);
   const ingredients = await database.getAllFromIndex("ingredients", "by-updatedAt");
   return ingredients.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
@@ -246,6 +248,7 @@ export async function resetLocalData(): Promise<void> {
   await Promise.all([database.clear("logs"), database.clear("recipes"), database.clear("ingredients"), database.clear("identities"), database.clear("sourceMappings"), database.clear("foodPreferences")]);
   await saveSettings(defaultSettings());
   await database.put("identities", defaultIdentity());
+  await ensureDefaultGenericIngredients(database);
 }
 
 export async function replaceAllData(payload: {
@@ -268,4 +271,14 @@ export async function replaceAllData(payload: {
   await Promise.all(payload.sourceMappings.map((mapping) => tx.objectStore("sourceMappings").put(mapping)));
   await Promise.all((payload.foodPreferences ?? []).map((preference) => tx.objectStore("foodPreferences").put(preference)));
   await tx.done;
+  await ensureDefaultGenericIngredients(database);
+}
+
+async function ensureDefaultGenericIngredients(database: IDBPDatabase<AxiomWebDb>): Promise<void> {
+  const existing = await database.getAll("ingredients");
+  const seeded = mergeDefaultGenericIngredients(existing).filter((ingredient) => DEFAULT_GENERIC_INGREDIENTS.some((defaultIngredient) => defaultIngredient.id === ingredient.id));
+  await Promise.all(seeded.map(async (ingredient) => {
+    const existing = await database.get("ingredients", ingredient.id);
+    if (!existing) await database.put("ingredients", ingredient);
+  }));
 }

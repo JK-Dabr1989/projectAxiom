@@ -5,6 +5,7 @@ import {
   TOKEN_CATEGORY_METADATA,
   WRITE_TOKENS_SCREEN_ID,
   addTokenToQueue,
+  canCreateToken,
   currentSessionItem,
   failCurrentToken,
   foodTokenDefinition,
@@ -12,15 +13,18 @@ import {
   isIntentionalWriterTokenType,
   isTopLevelWriterTokenType,
   markCurrentWritten,
+  mergeDefaultGenericIngredients,
   moveQueueItem,
   quickLogFoodTokenDefinition,
   quickLogRecipeTokenDefinition,
   recipeTokenDefinition,
   removeQueueItem,
+  resolveTokenCreationState,
   retryCurrentToken,
   shortcutTokenDefinition,
   skipCurrentToken,
   startWritingSession,
+  tokenOptionActionLabel,
   tokenPreviewSummary,
   type TokenWriteQueueItem,
 } from "../src/domain/tokenWriting";
@@ -111,7 +115,7 @@ describe("token writing domain", () => {
   it("previews token type meaning without raw protocol labels", () => {
     expect(tokenPreviewSummary(foodTokenDefinition(food("generic_03", "Generic 03")))).toBe("Generic food token");
     expect(tokenPreviewSummary(recipeTokenDefinition(recipe, foodsById))).toBe("Recipe workflow");
-    expect(tokenPreviewSummary(quickLogFoodTokenDefinition(food("fd_coffee", "Coffee"), 250))).toBe("Quick log - 250 g");
+    expect(tokenPreviewSummary(quickLogFoodTokenDefinition(food("fd_coffee", "Coffee"), 250))).toBe("Set portion - 250 g");
   });
 
   it("ships standard generic foods and queues them as generic tokens", () => {
@@ -123,6 +127,35 @@ describe("token writing domain", () => {
     expect(queue[0].behaviorLabel).toBe("Generic food token");
   });
 
+  it("uses direct Add to queue actions for fully defined Generic tokens", () => {
+    const state = resolveTokenCreationState({ tokenFamily: "generic", source: DEFAULT_GENERIC_FOODS[0] });
+
+    expect(tokenOptionActionLabel({ tokenFamily: "generic", source: DEFAULT_GENERIC_FOODS[0] })).toBe("Add to queue");
+    expect(state.canQueue).toBe(true);
+    expect(state.message).toBe("Generic token ready to queue.");
+  });
+
+  it("queues Generic tokens immediately and updates queue count", () => {
+    const first = resolveTokenCreationState({ tokenFamily: "generic", source: DEFAULT_GENERIC_FOODS[0] });
+    expect(first.definition).toBeDefined();
+
+    const queue = addTokenToQueue([], first.definition!, "generic-pork");
+
+    expect(queue).toHaveLength(1);
+    expect(queue[0].displayLabel).toBe("Pork");
+  });
+
+  it("allows multiple Generic tokens to be added consecutively", () => {
+    const queue = DEFAULT_GENERIC_FOODS.slice(0, 3).reduce<TokenWriteQueueItem[]>((items, token, index) => {
+      const state = resolveTokenCreationState({ tokenFamily: "generic", source: token });
+      expect(state.definition).toBeDefined();
+      return addTokenToQueue(items, state.definition!, `generic-${index}`);
+    }, []);
+
+    expect(queue).toHaveLength(3);
+    expect(queue.map((item) => item.displayLabel)).toEqual(["Pork", "Lamb", "Beef"]);
+  });
+
   it("supports weighed food, quick-log food, recipe, identity, and generic in one mixed queue", () => {
     const queue = [
       foodTokenDefinition(food("fd_chicken", "Chicken breast")),
@@ -132,7 +165,72 @@ describe("token writing domain", () => {
       foodTokenDefinition(DEFAULT_GENERIC_FOODS[4]),
     ].reduce<TokenWriteQueueItem[]>((items, definition, index) => addTokenToQueue(items, definition, `mix${index}`), []);
 
-    expect(queue.map((item) => item.behaviorLabel)).toEqual(["Weighed item", "Quick log - 15 g", "Recipe workflow", "Person switch token", "Generic food token"]);
+    expect(queue.map((item) => item.behaviorLabel)).toEqual(["Weighed item", "Set portion - 15 g", "Recipe workflow", "Person switch token", "Generic food token"]);
+  });
+
+  it("does not create a Food token until a behaviour subtype is chosen", () => {
+    const selectedOnly = resolveTokenCreationState({ tokenFamily: "ingredient", source: food("fd_chicken", "Chicken breast") });
+
+    expect(selectedOnly.canQueue).toBe(false);
+    expect(selectedOnly.step).toBe("choose_behavior");
+    expect(canCreateToken({ tokenFamily: "ingredient", source: food("fd_chicken", "Chicken breast"), behaviorSubtype: "weighed" })).toBe(true);
+  });
+
+  it("requires a positive amount for set-portion Food tokens", () => {
+    expect(resolveTokenCreationState({ tokenFamily: "ingredient", source: food("fd_butter", "Butter"), behaviorSubtype: "set_portion", amountGrams: 0 }).canQueue).toBe(false);
+    expect(() => quickLogFoodTokenDefinition(food("fd_butter", "Butter"), 0)).toThrow("Set portion amount is required.");
+
+    const state = resolveTokenCreationState({ tokenFamily: "ingredient", source: food("fd_butter", "Butter"), behaviorSubtype: "set_portion", amountGrams: 15 });
+    expect(state.canQueue).toBe(true);
+    expect(state.definition?.amountGrams).toBe(15);
+  });
+
+  it("checks recipe existence before behaviour selection", () => {
+    const empty = resolveTokenCreationState({ tokenFamily: "recipe", source: null });
+    const selected = resolveTokenCreationState({ tokenFamily: "recipe", source: recipe });
+
+    expect(empty.step).toBe("select_entity");
+    expect(empty.canQueue).toBe(false);
+    expect(selected.step).toBe("choose_behavior");
+    expect(selected.message).toBe("Choose how this recipe token should work.");
+  });
+
+  it("keeps created ingredients and recipes in selection state before subtype choice", () => {
+    const createdFood = food("custom:toast", "Toast");
+    const createdRecipe = { ...recipe, id: "recipe_created", name: "Created recipe" };
+
+    expect(resolveTokenCreationState({ tokenFamily: "ingredient", source: createdFood }).step).toBe("choose_behavior");
+    expect(resolveTokenCreationState({ tokenFamily: "recipe", source: createdRecipe }).step).toBe("choose_behavior");
+  });
+
+  it("keeps identity creation complete without changing ownership semantics", () => {
+    const state = resolveTokenCreationState({ tokenFamily: "identity", source: identity });
+
+    expect(state.canQueue).toBe(true);
+    expect(state.message).toBe("Identity token ready to queue.");
+    expect(tokenOptionActionLabel({ tokenFamily: "identity", source: identity })).toBe("Add to queue");
+    expect(state.definition?.behaviorSubtype).toBe("person_switch");
+    expect(state.definition?.tokenFamily).toBe("identity");
+  });
+
+  it("uses Configure for Food and Recipe rows until required subtype is complete", () => {
+    expect(tokenOptionActionLabel({ tokenFamily: "ingredient", source: food("fd_chicken", "Chicken breast") })).toBe("Configure");
+    expect(tokenOptionActionLabel({ tokenFamily: "recipe", source: recipe })).toBe("Configure");
+    expect(resolveTokenCreationState({ tokenFamily: "ingredient", source: food("fd_chicken", "Chicken breast") }).canQueue).toBe(false);
+  });
+
+  it("seeds default generic ingredients idempotently", () => {
+    const once = mergeDefaultGenericIngredients([]);
+    const twice = mergeDefaultGenericIngredients(once);
+
+    expect(once.filter((ingredient) => ingredient.sourceKind === "generic").map((ingredient) => ingredient.displayName)).toEqual(["Pork", "Lamb", "Beef", "Chicken", "Fish"]);
+    expect(twice.filter((ingredient) => ingredient.sourceKind === "generic")).toHaveLength(5);
+  });
+
+  it("prevents incomplete token definitions from entering the queue", () => {
+    const incomplete = { ...foodTokenDefinition(food("fd_a", "A")), payload: "" };
+
+    expect(() => addTokenToQueue([], incomplete)).toThrow("Token definition requires a payload.");
   });
 });
 

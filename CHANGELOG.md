@@ -48,7 +48,12 @@
 - Moved Quick-log out of the top-level token picker and into Food / Ingredient and Recipe behavior choices with predefined grams.
 - Added Food / Ingredient behavior setup for weighed item tokens and Quick log tokens.
 - Added Recipe behavior setup for the current recipe workflow and Android-style recipe Quick log shortcut payloads.
-- Added token previews before queueing so users can confirm the label, token kind, and product-level meaning before preparing a physical token.
+- Added token previews for configurable tokens so users can confirm the label, token kind, and product-level meaning before preparing a physical token.
 - Added in-flow create-and-return paths for custom ingredients, recipes, people, and Generic Tokens so missing entities can be created without losing the mixed token queue.
 - Added built-in Generic food tokens for Pork, Lamb, Beef, Chicken, and Fish, with Android generic semantics using generic food IDs and the established ingredient payload shape.
+- Added idempotent Generic food token seeding during local ingredient loading, reset, and restore.
+- Added token definition validation with explicit family, behavior subtype, and set-portion grams so incomplete definitions cannot enter the queue.
+- Routed existing Food and Recipe write actions into Write Tokens with the entity selected while still requiring behavior selection before queueing.
+- Changed fully defined Write Tokens rows, including Generic food and Identity tokens, to use direct `Add to queue` actions.
+- Removed the mandatory Generic choose-then-preview step so Pork, Lamb, Beef, Chicken, and Fish can be queued consecutively from the list.
 - Kept real Bluetooth connection, scale token-write mode, PN532 physical writes, and firmware verification deferred.

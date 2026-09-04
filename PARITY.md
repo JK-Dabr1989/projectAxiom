@@ -39,8 +39,10 @@ Implemented:
 - Corrected the token writer information architecture to four top-level choices: Food / Ingredient, Recipe, Identity, and Generic.
 - Moved Quick-log out of the top-level token picker and into Food / Ingredient and Recipe behavior choices.
 - Added preview-before-queueing after entity selection and behavior selection.
+- Added `resolveTokenCreationState` / `canCreateToken` validation so incomplete Food/Recipe behavior selections and set-portion amounts cannot enter the queue.
 - Added create-missing-entity flows inside Write Tokens so new custom ingredients, recipes, people, and generic tokens return to the same queue context.
-- Added built-in Generic food tokens for Pork, Lamb, Beef, Chicken, and Fish so the Generic selector is populated on a clean install.
+- Added idempotent built-in Generic food token seeding for Pork, Lamb, Beef, Chicken, and Fish so the Generic selector is populated on a clean install, after reset, and after restore.
+- Expanded queue items to store token family, behavior subtype, and set-portion grams alongside the canonical payload.
 - Added queue management for add, remove, reorder, clear, count, and start-writing state.
 - Added a staged writing-session UI with current token, progress count, retry, skip, cancel, and back-to-queue controls.
 - Routed token actions from food search, ingredient library, recipe library, people, quick-log, and generic token library into the same Write Tokens queue.
@@ -229,9 +231,10 @@ Implemented:
 - Write Tokens starts from four top-level choices: Food / Ingredient, Recipe, Identity, and Generic.
 - Food/Ingredient tokens search the combined bundled food catalog and custom ingredient list, then ask whether the token is a weighed item or a quick-log item with predefined grams.
 - Recipe tokens use the current Web recipe model, which is single-recipe only today, then ask whether the token uses the recipe workflow or a quick-log shortcut with predefined grams.
+- Token definition validation enforces the sequence: select family, confirm entity availability, choose required behavior, provide required set-portion grams, preview, then queue.
 - Identity tokens switch the active person on the scale and remain separate from scale ownership.
 - Quick-log is no longer a top-level writer category; it is a behavior under Food / Ingredient and Recipe and emits the established shortcut payload with the selected entity reference and default grams.
-- Generic Tokens follow the current Axiom implementation as reusable generic food entries; Web ships Pork, Lamb, Beef, Chicken, and Fish defaults and writes generic IDs through the ingredient payload shape with generic entity semantics rather than a separate undefined/unresolved token type.
+- Generic Tokens follow the current Axiom implementation as reusable generic food entries; Web seeds Pork, Lamb, Beef, Chicken, and Fish defaults and writes generic IDs through the ingredient payload shape with generic entity semantics rather than a separate undefined/unresolved token type.
 - Undefined/unresolved tokens remain review/recovery states and are not exposed as an intentional writer category.
 - Local ingredient library/editor with per-100g nutrition fields.
 - Custom ingredients included in search, recipes, manual logging, timeline display, and exports.
@@ -259,6 +262,8 @@ Implemented now:
 - Central token selection by product token type.
 - Top-level selectors for Food / Ingredient, Recipe, Generic Token, and Identity.
 - Food / Ingredient and Recipe behavior selection for weighed/workflow tokens versus Quick log tokens.
+- Token definition validation before preview and queue insertion.
+- Idempotent built-in Generic food seeding.
 - Create-missing-entity flows that return to the same Write Tokens queue.
 - Mixed token queue management, preview, reorder, remove, clear, and staged writing-session state.
 - Canonical SS1 payload preparation where current Axiom semantics are available.
