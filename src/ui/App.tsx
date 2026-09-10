@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, BookOpen, Camera, Database, Edit3, Ellipsis, HelpCircle, History, Home, Play, RefreshCcw, Search, Settings, SkipForward, Scale, Star, Tags, Trash2, UserRound, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, BookOpen, CalendarDays, Camera, ChevronRight, Database, Edit3, Ellipsis, HelpCircle, History, Home, Play, RefreshCcw, Search, Settings, SkipForward, Scale, Star, Tags, Trash2, UserRound, X } from "lucide-react";
 import type { AppSettings, FoodCatalogItem, FoodPreference, IdentityProfile, LogEntry, Recipe, RecipeIngredient, SourceMapping, UserIngredient } from "../domain/models";
 import { entriesForDate, groupEntriesByMeal } from "../domain/grouping";
 import { macrosForFood, recipeTotals } from "../domain/nutrition";
@@ -138,6 +138,7 @@ export function App() {
   const favoriteFoods = useMemo(() => catalog.filter((food) => favoriteIds.has(food.id)).slice(0, 12), [catalog, favoriteIds]);
   const recentFoods = useMemo(() => foodPreferences.filter((preference) => preference.lastSelectedAt && foodsById.has(preference.foodId)).sort((a, b) => (b.lastSelectedAt ?? "").localeCompare(a.lastSelectedAt ?? "")).map((preference) => foodsById.get(preference.foodId)!).slice(0, 12), [foodPreferences, foodsById]);
   const favoriteRecipeIds = useMemo(() => new Set(foodPreferences.filter((preference) => preference.isFavorite && preference.foodId.startsWith("recipe:")).map((preference) => preference.foodId.slice("recipe:".length))), [foodPreferences]);
+  const activeIdentity = useMemo(() => identities.find((identity) => identity.identityId === settings?.activeIdentityId) ?? identities[0] ?? null, [identities, settings?.activeIdentityId]);
   const visibleDateLogs = useMemo(() => entriesForDate(logs, date), [logs, date]);
   const groups = useMemo(() => groupEntriesByMeal(visibleDateLogs, foodsById), [visibleDateLogs, foodsById]);
   const searchResults = useMemo(() => searchFoods(catalog, query, settings?.preferredStoreName), [catalog, query, settings?.preferredStoreName]);
@@ -232,7 +233,7 @@ export function App() {
       <main className="content">
         {updateAvailable ? <div className="update-banner"><span>A newer Axiom build is ready.</span><button onClick={() => window.location.reload()}>Reload</button></div> : null}
         {message ? <p className="toast">{message}</p> : null}
-        {screen === "today" && <TodayScreen groups={groups} totals={totals} onLog={() => navigate("search")} reviewCount={zeroWeightEntries.length + unknownEntries.length} onReview={() => navigate("review")} />}
+        {screen === "today" && <TodayScreen date={date} setDate={setDate} groups={groups} totals={totals} calorieTarget={activeIdentity?.dailyCaloriesTarget ?? null} identityName={activeIdentity?.identityName ?? settings.activeIdentityName} reviewCount={zeroWeightEntries.length + unknownEntries.length} onLog={() => navigate("search")} onReview={() => navigate("review")} onTimeline={() => navigate("timeline")} />}
         {screen === "search" && <SearchScreen query={query} setQuery={setQuery} results={searchResults} selectedFood={selectedFood} grams={grams} setGrams={setGrams} favoriteFoods={favoriteFoods} recentFoods={recentFoods} isFavorite={(foodId) => favoriteIds.has(foodId)} onToggleFavorite={toggleFavorite} onSelect={(food) => { setSelectedFoodId(food.id); void rememberFood(food.id); }} onClose={() => setSelectedFoodId(null)} onWriteToken={(food) => openTokenWriter({ tokenFamily: "ingredient", food })} onLog={logFood} />}
         {screen === "timeline" && <TimelineScreen date={date} setDate={setDate} groups={groups} onUpdate={async (entry, nextGrams, meal) => { await upsertLog({ ...entry, grams: nextGrams, zeroWeightFlag: nextGrams === 0, mealLabelOverride: meal }); await loadAll(); }} onDelete={async (entryId) => { await deleteLog(entryId); await loadAll(); }} />}
         {screen === "recipes" && <RecipesScreen catalog={catalog} foodsById={foodsById} recipes={recipes} settings={settings} favoriteRecipeIds={favoriteRecipeIds} onToggleFavorite={(recipeId) => toggleFavorite(`recipe:${recipeId}`)} onWriteToken={(recipe) => openTokenWriter({ tokenFamily: "recipe", recipe })} onSave={async (recipe) => { await upsertRecipe(recipe); await loadAll(); }} onDelete={async (recipeId) => { await deleteRecipe(recipeId); await loadAll(); }} onLog={async (entries) => { for (const entry of entries) await upsertLog(entry); await loadAll(); setScreen("today"); setMessage("Recipe logged"); }} />}
@@ -305,8 +306,70 @@ function OnboardingScreen({ settings, onComplete }: { settings: AppSettings; onC
   return <main className="onboarding"><section className="panel onboarding-card"><div className="brand"><span className="mark">AX</span><span>Axiom Web</span></div><h1>Set up Axiom Web</h1><p className="muted">Axiom stores your food logs, recipes, ingredients, settings, and profiles locally on this device. You can use the app manually without a cloud account.</p><p className="muted">This validation build does not connect to the physical scale yet, and NFC writing is not enabled here.</p><label>Primary user name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Default" /></label><button className="primary" onClick={() => onComplete(name.trim() || "Default")}>Start using Axiom</button></section></main>;
 }
 
-function TodayScreen({ groups, totals, reviewCount, onLog, onReview }: { groups: ReturnType<typeof groupEntriesByMeal>; totals: { kcal: number; carbs: number; fat: number; protein: number }; reviewCount: number; onLog: () => void; onReview: () => void }) {
-  return <section className="stack"><div className="metrics"><Metric label="Calories" value={Math.round(totals.kcal).toString()} unit="kcal" /><Metric label="Protein" value={totals.protein.toFixed(1)} unit="g" /><Metric label="Carbs" value={totals.carbs.toFixed(1)} unit="g" /><Metric label="Fat" value={totals.fat.toFixed(1)} unit="g" /></div><div className="button-row"><button className="primary" onClick={onLog}>Log food</button><button onClick={onReview}>Review {reviewCount}</button></div><MealGroups groups={groups} editable={false} /></section>;
+function TodayScreen({ date, setDate, groups, totals, calorieTarget, identityName, reviewCount, onLog, onReview, onTimeline }: { date: string; setDate: (value: string) => void; groups: ReturnType<typeof groupEntriesByMeal>; totals: { kcal: number; carbs: number; fat: number; protein: number }; calorieTarget: number | null; identityName: string; reviewCount: number; onLog: () => void; onReview: () => void; onTimeline: () => void }) {
+  const target = typeof calorieTarget === "number" && calorieTarget > 0 ? calorieTarget : null;
+  const kcal = Math.round(totals.kcal);
+  const progress = target ? Math.min(kcal / target, 1) : 0;
+  const mealRows = mealOverviewRows(groups);
+  return (
+    <section className="today-screen">
+      <header className="today-status">
+        <div>
+          <p className="eyebrow">Scale</p>
+          <div className="scale-state"><span /> Connection pending</div>
+        </div>
+        <label className="date-control">
+          <span><CalendarDays size={15} /> {formatDisplayDate(date)}</span>
+          <input type="date" value={date} onChange={(event) => setDate(event.target.value)} aria-label="Selected day" />
+        </label>
+      </header>
+
+      <section className="calorie-hero" aria-label="Daily calories">
+        <div className="calorie-arc-wrap">
+          <svg className="calorie-arc" viewBox="0 0 240 142" role="img" aria-label={target ? `${kcal} calories consumed of ${target}` : `${kcal} calories consumed`}>
+            <path className="arc-track" d="M 28 118 A 92 92 0 0 1 212 118" pathLength="100" />
+            <path className="arc-progress" d="M 28 118 A 92 92 0 0 1 212 118" pathLength="100" style={{ strokeDasharray: `${Math.round(progress * 100)} 100` }} />
+          </svg>
+          <div className="calorie-value">
+            <strong>{kcal}</strong>
+            <span>kcal consumed</span>
+          </div>
+        </div>
+        <p className="target-copy">{target ? `${Math.max(target - kcal, 0)} kcal remaining for ${identityName}` : `No daily calorie target set for ${identityName}`}</p>
+        <div className="today-macros" aria-label="Daily macro totals">
+          <MacroMini label="Carbs" value={totals.carbs} />
+          <MacroMini label="Fat" value={totals.fat} />
+          <MacroMini label="Protein" value={totals.protein} />
+        </div>
+      </section>
+
+      <section className="day-glance">
+        <div className="title-row">
+          <div>
+            <p className="eyebrow">Today</p>
+            <h2>Your day at a glance</h2>
+          </div>
+          <button className="compact-action" onClick={onLog}>Log food</button>
+        </div>
+        <div className="meal-overview-list">
+          {mealRows.map((row) => <button key={row.id} className={`meal-overview-row meal-${row.id}`} onClick={onTimeline}>
+            <span className="meal-accent" />
+            <span>
+              <strong>{row.label}</strong>
+              <small>{row.count === 0 ? "No items logged" : `${row.count} item${row.count === 1 ? "" : "s"} logged`}</small>
+            </span>
+            <span className="meal-kcal">{row.kcal} kcal</span>
+            <ChevronRight size={18} />
+          </button>)}
+        </div>
+      </section>
+
+      <div className="today-actions">
+        {reviewCount > 0 ? <button onClick={onReview}>Review {reviewCount}</button> : null}
+        <button className="primary timeline-cta" onClick={onTimeline}>View timeline</button>
+      </div>
+    </section>
+  );
 }
 
 function WriteTokensScreen({ catalog, foodsById, recipes, identities, initialSeed, onConsumedInitialSeed, queue, setQueue, onAddToken, onSaveIngredient, onSaveRecipe, onSaveIdentity }: { catalog: FoodCatalogItem[]; foodsById: Map<string, FoodCatalogItem>; recipes: Recipe[]; identities: IdentityProfile[]; initialSeed: TokenWriterSeed | null; onConsumedInitialSeed: () => void; queue: TokenWriteQueueItem[]; setQueue: (queue: TokenWriteQueueItem[]) => void; onAddToken: (definition: TokenDefinition) => void; onSaveIngredient: (ingredient: UserIngredient) => Promise<void> | void; onSaveRecipe: (recipe: Recipe) => Promise<void> | void; onSaveIdentity: (identity: IdentityProfile) => Promise<void> | void }) {
@@ -709,6 +772,10 @@ function MealGroups({ groups, editable, onUpdate, onDelete }: { groups: ReturnTy
   return <div className="stack">{groups.map((group) => <section className="panel" key={group.groupId}><h2>{group.label} <small>{group.timeRangeLabel}</small></h2>{group.entries.map((item) => <article className="log-row" key={item.entry.id}><span className="thumb">{item.food?.thumbnailLabel ?? "?"}</span><div><strong>{item.entry.scaleRecipeName ? `${item.entry.scaleRecipeName}: ${item.name}` : item.name}</strong><small>{item.entry.grams}g | {item.caloriesRounded} kcal | {item.reviewReasons.join(", ")}</small></div>{editable ? <div className="log-actions"><input type="number" defaultValue={item.entry.grams} onBlur={(event) => onUpdate?.(item.entry, Number(event.target.value), item.mealLabel)} /><select defaultValue={item.mealLabel} onChange={(event) => onUpdate?.(item.entry, item.entry.grams, event.target.value)}>{["breakfast", "lunch", "dinner", "snacks"].map((meal) => <option key={meal}>{meal}</option>)}</select><button title="Delete log" onClick={() => onDelete?.(item.entry.id)}><Trash2 size={16} /></button></div> : null}</article>)}</section>)}</div>;
 }
 
+function MacroMini({ label, value }: { label: string; value: number }) {
+  return <div className="macro-mini"><strong>{value.toFixed(1)}g</strong><span>{label}</span></div>;
+}
+
 function Metric({ label, value, unit }: { label: string; value: string; unit: string }) {
   return <div className="metric"><span>{label}</span><strong>{value}</strong><small>{unit}</small></div>;
 }
@@ -749,6 +816,25 @@ function draftToIngredient(draft: OpenFoodFactsDraft | null): UserIngredient | n
 function numberOrNull(value: string): number | null {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function mealOverviewRows(groups: ReturnType<typeof groupEntriesByMeal>) {
+  const byId = new Map(groups.map((group) => [group.groupId, group]));
+  const base = ["breakfast", "lunch", "dinner"].map((id) => {
+    const group = byId.get(id);
+    return { id, label: group?.label ?? displayMealName(id), count: group?.entries.length ?? 0, kcal: group?.kcalTotal ?? 0 };
+  });
+  const extra = groups.filter((group) => !["breakfast", "lunch", "dinner"].includes(group.groupId)).map((group) => ({ id: group.groupId, label: group.label, count: group.entries.length, kcal: group.kcalTotal }));
+  return [...base, ...extra];
+}
+
+function displayMealName(value: string): string {
+  return value.slice(0, 1).toUpperCase() + value.slice(1);
+}
+
+function formatDisplayDate(value: string): string {
+  const parsed = new Date(`${value}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
 }
 
 function tokenTypeLabel(type: TokenDefinition["tokenType"]): string {

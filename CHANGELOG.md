@@ -56,4 +56,5 @@
 - Routed existing Food and Recipe write actions into Write Tokens with the entity selected while still requiring behavior selection before queueing.
 - Changed fully defined Write Tokens rows, including Generic food and Identity tokens, to use direct `Add to queue` actions.
 - Removed the mandatory Generic choose-then-preview step so Pork, Lamb, Beef, Chicken, and Fish can be queued consecutively from the list.
+- Reworked Today into a native-style landing screen with a hero calorie arc, compact macro row, day-at-a-glance meal card, and prominent View timeline CTA.
 - Kept real Bluetooth connection, scale token-write mode, PN532 physical writes, and firmware verification deferred.

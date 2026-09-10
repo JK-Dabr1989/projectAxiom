@@ -206,13 +206,249 @@ small {
   padding: 1rem;
 }
 
+.today-screen {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0.15rem 0 0.35rem;
+}
+
+.today-screen::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(216, 168, 78, 0.18), transparent 28%),
+    radial-gradient(circle at 50% 46%, rgba(88, 106, 122, 0.12), transparent 34%),
+    linear-gradient(180deg, #0b1015 0%, #101419 45%, #0d1116 100%);
+}
+
+.today-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.scale-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  color: #c9d1d9;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.scale-state span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #d8a84e;
+  box-shadow: 0 0 16px rgba(216, 168, 78, 0.7);
+}
+
+.date-control {
+  position: relative;
+  display: inline-grid;
+  justify-items: end;
+  gap: 0.2rem;
+  color: #f5f1e8;
+}
+
+.date-control span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 800;
+}
+
+.date-control input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.calorie-hero {
+  border: 1px solid rgba(216, 168, 78, 0.24);
+  background:
+    linear-gradient(180deg, rgba(25, 33, 41, 0.86), rgba(13, 18, 24, 0.94)),
+    radial-gradient(circle at center 26%, rgba(216, 168, 78, 0.18), transparent 42%);
+  border-radius: 8px;
+  padding: 1.05rem 1rem 1rem;
+  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.32);
+}
+
+.calorie-arc-wrap {
+  position: relative;
+  width: min(100%, 330px);
+  margin: 0 auto;
+  aspect-ratio: 240 / 142;
+}
+
+.calorie-arc {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.arc-track,
+.arc-progress {
+  fill: none;
+  stroke-width: 20;
+  stroke-linecap: round;
+}
+
+.arc-track {
+  stroke: rgba(72, 83, 96, 0.62);
+}
+
+.arc-progress {
+  stroke: #d8a84e;
+  filter: drop-shadow(0 0 10px rgba(216, 168, 78, 0.46));
+}
+
+.calorie-value {
+  position: absolute;
+  left: 50%;
+  bottom: 0.12rem;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  line-height: 1;
+}
+
+.calorie-value strong {
+  font-size: clamp(3.1rem, 18vw, 5.4rem);
+  font-weight: 900;
+  color: #f8f1e2;
+}
+
+.calorie-value span {
+  margin-top: 0.22rem;
+  color: #c2cbd4;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.target-copy {
+  text-align: center;
+  color: #9faab5;
+  margin: 0.15rem 0 1rem;
+}
+
+.today-macros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 0.85rem;
+}
+
+.macro-mini {
+  display: grid;
+  justify-items: center;
+  gap: 0.16rem;
+  min-width: 0;
+}
+
+.macro-mini strong {
+  font-size: 1.08rem;
+  color: #f5f1e8;
+}
+
+.macro-mini span {
+  color: #98a4b0;
+  font-size: 0.78rem;
+}
+
+.day-glance {
+  border: 1px solid #2d3843;
+  background: rgba(20, 27, 34, 0.92);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.day-glance h2 {
+  margin-bottom: 0;
+}
+
+.compact-action {
+  padding: 0.52rem 0.68rem;
+}
+
+.meal-overview-list {
+  display: grid;
+  gap: 0.62rem;
+  margin-top: 0.9rem;
+}
+
+.meal-overview-row {
+  display: grid;
+  grid-template-columns: 5px minmax(0, 1fr) auto auto;
+  gap: 0.72rem;
+  align-items: center;
+  min-height: 68px;
+  text-align: left;
+  background: #10161d;
+}
+
+.meal-overview-row strong,
+.meal-overview-row small {
+  display: block;
+}
+
+.meal-overview-row small {
+  margin-top: 0.16rem;
+  color: #96a1ad;
+}
+
+.meal-accent {
+  width: 5px;
+  height: 38px;
+  border-radius: 999px;
+  background: #d8a84e;
+}
+
+.meal-lunch .meal-accent {
+  background: #e3c170;
+}
+
+.meal-dinner .meal-accent {
+  background: #b99555;
+}
+
+.meal-snacks .meal-accent {
+  background: #8fa1ad;
+}
+
+.meal-kcal {
+  white-space: nowrap;
+  color: #f5f1e8;
+  font-weight: 800;
+}
+
+.today-actions {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.timeline-cta {
+  min-height: 56px;
+  width: 100%;
+  font-size: 1rem;
+}
+
 .sticky {
   align-self: start;
   position: sticky;
   top: 1rem;
 }
 
-.metrics,
 .macro-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -836,7 +1072,6 @@ small {
     grid-template-columns: 1fr;
   }
 
-  .metrics,
   .macro-strip,
   .macro-edit {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -893,6 +1128,23 @@ small {
 }
 
 @media (max-width: 360px) {
+  .today-status {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .calorie-hero {
+    padding-inline: 0.72rem;
+  }
+
+  .meal-overview-row {
+    grid-template-columns: 5px minmax(0, 1fr) auto;
+  }
+
+  .meal-overview-row svg {
+    display: none;
+  }
+
   .more-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
