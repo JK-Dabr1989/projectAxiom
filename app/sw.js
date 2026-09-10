@@ -1,4 +1,4 @@
-const CACHE_NAME = "axiom-web-shell-v5";
+const CACHE_NAME = "axiom-web-shell-v6";
 const BASE_PATH = "/app";
 const CORE_ASSETS = [
   `${BASE_PATH}/`,
@@ -18,7 +18,7 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))).then(() => self.clients.claim())
+    caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith("axiom-web-shell-") && key !== CACHE_NAME).map((key) => caches.delete(key)))).then(() => self.clients.claim())
   );
 });
 
