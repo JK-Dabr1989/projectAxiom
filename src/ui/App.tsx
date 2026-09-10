@@ -309,7 +309,9 @@ function OnboardingScreen({ settings, onComplete }: { settings: AppSettings; onC
 function TodayScreen({ date, setDate, groups, totals, calorieTarget, identityName, reviewCount, onLog, onReview, onTimeline }: { date: string; setDate: (value: string) => void; groups: ReturnType<typeof groupEntriesByMeal>; totals: { kcal: number; carbs: number; fat: number; protein: number }; calorieTarget: number | null; identityName: string; reviewCount: number; onLog: () => void; onReview: () => void; onTimeline: () => void }) {
   const target = typeof calorieTarget === "number" && calorieTarget > 0 ? calorieTarget : null;
   const kcal = Math.round(totals.kcal);
-  const progress = target ? Math.min(kcal / target, 1) : 0;
+  const progress = target ? Math.min(kcal / target, 1) : noTargetArcProgress(kcal);
+  const progressPercent = Math.round(progress * 100);
+  const endpoint = arcEndpoint(progress);
   const mealRows = mealOverviewRows(groups);
   return (
     <section className="today-screen">
@@ -327,8 +329,18 @@ function TodayScreen({ date, setDate, groups, totals, calorieTarget, identityNam
       <section className="calorie-hero" aria-label="Daily calories">
         <div className="calorie-arc-wrap">
           <svg className="calorie-arc" viewBox="0 0 240 142" role="img" aria-label={target ? `${kcal} calories consumed of ${target}` : `${kcal} calories consumed`}>
+            <defs>
+              <linearGradient id="calorieArcGradient" x1="28" y1="118" x2="212" y2="118" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#d8a84e" />
+                <stop offset="42%" stopColor="#d983b5" />
+                <stop offset="100%" stopColor="#b99cff" />
+              </linearGradient>
+            </defs>
             <path className="arc-track" d="M 28 118 A 92 92 0 0 1 212 118" pathLength="100" />
-            <path className="arc-progress" d="M 28 118 A 92 92 0 0 1 212 118" pathLength="100" style={{ strokeDasharray: `${Math.round(progress * 100)} 100` }} />
+            <path className="arc-progress" d="M 28 118 A 92 92 0 0 1 212 118" pathLength="100" style={{ strokeDasharray: `${progressPercent} 100` }} />
+            <circle className="arc-node arc-node-start" cx="28" cy="118" r="7" />
+            <circle className="arc-node arc-node-end" cx="212" cy="118" r="5" />
+            {progress > 0 ? <circle className="arc-node arc-node-current" cx={endpoint.x} cy={endpoint.y} r="7" /> : null}
           </svg>
           <div className="calorie-value">
             <strong>{kcal}</strong>
@@ -337,9 +349,9 @@ function TodayScreen({ date, setDate, groups, totals, calorieTarget, identityNam
         </div>
         <p className="target-copy">{target ? `${Math.max(target - kcal, 0)} kcal remaining for ${identityName}` : `No daily calorie target set for ${identityName}`}</p>
         <div className="today-macros" aria-label="Daily macro totals">
-          <MacroMini label="Carbs" value={totals.carbs} />
-          <MacroMini label="Fat" value={totals.fat} />
-          <MacroMini label="Protein" value={totals.protein} />
+          <MacroMini label="Carbs" value={totals.carbs} tone="carbs" />
+          <MacroMini label="Fat" value={totals.fat} tone="fat" />
+          <MacroMini label="Protein" value={totals.protein} tone="protein" />
         </div>
       </section>
 
@@ -772,8 +784,8 @@ function MealGroups({ groups, editable, onUpdate, onDelete }: { groups: ReturnTy
   return <div className="stack">{groups.map((group) => <section className="panel" key={group.groupId}><h2>{group.label} <small>{group.timeRangeLabel}</small></h2>{group.entries.map((item) => <article className="log-row" key={item.entry.id}><span className="thumb">{item.food?.thumbnailLabel ?? "?"}</span><div><strong>{item.entry.scaleRecipeName ? `${item.entry.scaleRecipeName}: ${item.name}` : item.name}</strong><small>{item.entry.grams}g | {item.caloriesRounded} kcal | {item.reviewReasons.join(", ")}</small></div>{editable ? <div className="log-actions"><input type="number" defaultValue={item.entry.grams} onBlur={(event) => onUpdate?.(item.entry, Number(event.target.value), item.mealLabel)} /><select defaultValue={item.mealLabel} onChange={(event) => onUpdate?.(item.entry, item.entry.grams, event.target.value)}>{["breakfast", "lunch", "dinner", "snacks"].map((meal) => <option key={meal}>{meal}</option>)}</select><button title="Delete log" onClick={() => onDelete?.(item.entry.id)}><Trash2 size={16} /></button></div> : null}</article>)}</section>)}</div>;
 }
 
-function MacroMini({ label, value }: { label: string; value: number }) {
-  return <div className="macro-mini"><strong>{value.toFixed(1)}g</strong><span>{label}</span></div>;
+function MacroMini({ label, value, tone }: { label: string; value: number; tone: "carbs" | "fat" | "protein" }) {
+  return <div className={`macro-mini macro-${tone}`}><strong>{value.toFixed(1)}g</strong><span>{label}</span></div>;
 }
 
 function Metric({ label, value, unit }: { label: string; value: string; unit: string }) {
@@ -816,6 +828,22 @@ function draftToIngredient(draft: OpenFoodFactsDraft | null): UserIngredient | n
 function numberOrNull(value: string): number | null {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function noTargetArcProgress(kcal: number): number {
+  if (kcal <= 0) return 0;
+  return Math.min(Math.max(kcal / 2000, 0.08), 1);
+}
+
+function arcEndpoint(progress: number): { x: number; y: number } {
+  const radius = 92;
+  const centerX = 120;
+  const centerY = 118;
+  const angle = Math.PI * (1 - Math.min(Math.max(progress, 0), 1));
+  return {
+    x: centerX + radius * Math.cos(angle),
+    y: centerY - radius * Math.sin(angle),
+  };
 }
 
 function mealOverviewRows(groups: ReturnType<typeof groupEntriesByMeal>) {

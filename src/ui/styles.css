@@ -299,17 +299,36 @@ small {
 .arc-track,
 .arc-progress {
   fill: none;
-  stroke-width: 20;
+  stroke-width: 18;
   stroke-linecap: round;
 }
 
 .arc-track {
-  stroke: rgba(72, 83, 96, 0.62);
+  stroke: rgba(60, 69, 82, 0.72);
 }
 
 .arc-progress {
-  stroke: #d8a84e;
-  filter: drop-shadow(0 0 10px rgba(216, 168, 78, 0.46));
+  stroke: url("#calorieArcGradient");
+  filter: drop-shadow(0 0 10px rgba(209, 132, 186, 0.46));
+}
+
+.arc-node {
+  stroke: #141b22;
+  stroke-width: 3;
+}
+
+.arc-node-start {
+  fill: #d8a84e;
+  filter: drop-shadow(0 0 9px rgba(216, 168, 78, 0.55));
+}
+
+.arc-node-end {
+  fill: #4b5664;
+}
+
+.arc-node-current {
+  fill: #d98fc6;
+  filter: drop-shadow(0 0 11px rgba(217, 143, 198, 0.66));
 }
 
 .calorie-value {
@@ -338,7 +357,8 @@ small {
 .target-copy {
   text-align: center;
   color: #9faab5;
-  margin: 0.15rem 0 1rem;
+  margin: 0.02rem 0 0.92rem;
+  font-size: 0.86rem;
 }
 
 .today-macros {
@@ -358,12 +378,23 @@ small {
 
 .macro-mini strong {
   font-size: 1.08rem;
-  color: #f5f1e8;
 }
 
 .macro-mini span {
   color: #98a4b0;
   font-size: 0.78rem;
+}
+
+.macro-carbs strong {
+  color: #8fc7ff;
+}
+
+.macro-fat strong {
+  color: #e4b95f;
+}
+
+.macro-protein strong {
+  color: #d99bea;
 }
 
 .day-glance {
@@ -411,15 +442,15 @@ small {
   width: 5px;
   height: 38px;
   border-radius: 999px;
-  background: #d8a84e;
+  background: #8fc7ff;
 }
 
 .meal-lunch .meal-accent {
-  background: #e3c170;
+  background: #e4b95f;
 }
 
 .meal-dinner .meal-accent {
-  background: #b99555;
+  background: #d99bea;
 }
 
 .meal-snacks .meal-accent {
